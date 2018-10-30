@@ -69,78 +69,34 @@
 			<keyword>61 Parabolas</keyword>
 		</searchEntry>
 	</addStf>
-	<assignMissionParametersToStf>
-		<id>35</id>
-		<stfId>3</stfId><!--Multiple mission parameters with unique names can be given.-->
-		<missionParameter><!--Mission parameter name. This must be unique among parameter names.-->
-			<name>Param1</name><!--Mission parameter value. A real number is expected.-->
-			<value>12.7</value>
-		</missionParameter>
-	</assignMissionParametersToStf>
-	<assignMissionParametersToStf>
-		<id>37</id>
-		<stfId>36</stfId><!--Multiple mission parameters with unique names can be given.-->
-		<missionParameter><!--Mission parameter name. This must be unique among parameter names.-->
-			<name>Param1</name><!--Mission parameter value. A real number is expected.-->
-			<value>7.6</value>
-		</missionParameter>
-	</assignMissionParametersToStf>
-	<fastEquivalentStressAnalysis>
-		<id>4</id>
-		<!--The stfId refers to 'addStf' instruction.-->
+	<generateStressSequence>
+		<id>22</id>
 		<stfId>3</stfId>
-		<!--Path to input file containing input parameters for generating stress sequence. File name must end with either XML or JSON.-->
-		<generateStressSequenceInputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/generateStressSequenceInput_test.xml</generateStressSequenceInputPath>
-		<!--Path to input file containing input parameters for equivalent stress analysis. File name must end with either XML or JSON.-->
-		<equivalentStressAnalysisInputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/equivalentStressAnalysisInput_test.xml</equivalentStressAnalysisInputPath>
-	</fastEquivalentStressAnalysis>
-	<fastEquivalentStressAnalysis>
-		<id>5</id>
-		<!--The stfId refers to 'addStf' instruction.-->
+		<inputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/generateStressSequenceInput_test.xml</inputPath>
+	</generateStressSequence>
+	<generateStressSequence>
+		<id>23</id>
 		<stfId>36</stfId>
-		<!--Path to input file containing input parameters for generating stress sequence. File name must end with either XML or JSON.-->
-		<generateStressSequenceInputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/generateStressSequenceInput_test.xml</generateStressSequenceInputPath>
-		<!--Path to input file containing input parameters for equivalent stress analysis. File name must end with either XML or JSON.-->
+		<inputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/generateStressSequenceInput_test.xml</inputPath>
+	</generateStressSequence>
+	<equivalentStressAnalysis>
+		<id>28</id>
+		<stressSequenceId>22</stressSequenceId>
 		<equivalentStressAnalysisInputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/equivalentStressAnalysisInput_test.xml</equivalentStressAnalysisInputPath>
-	</fastEquivalentStressAnalysis>
-	<plotEquivalentStressComparison>
-		<id>6</id>
-		<!--The fastEquivalentStressId refers to 'fastEquivalentStressAnalysis' instruction. Minimum 2 fastEquivalentStressId elements are required.-->
-		<fastEquivalentStressId>4</fastEquivalentStressId>
-		<fastEquivalentStressId>5</fastEquivalentStressId>
-		<!--Path to save equivalent stress comparison plot. File name must end with .png.-->
-		<outputPath>/Users/aurora/Temporary/comparison.png</outputPath>
-	</plotEquivalentStressComparison>
-	
-	<plotLifeFactors>
-		<id>7</id>
-		<!--The fastEquivalentStressId refers to 'fastEquivalentStressAnalysis' instruction. Minimum 2 fastEquivalentStressId elements are required.-->
-		<fastEquivalentStressId>4</fastEquivalentStressId>
-		<fastEquivalentStressId>5</fastEquivalentStressId>
-		<!--Basis fatigue mission to derive the life factors.-->
-		<basisMission>61 Parabolas</basisMission>
-		<!--Mission parameter name. This element is optional, if given, life factors will be plotted against mission parameter values of pilot points (or their parent spectra).-->
-		<missionParameter>Param1</missionParameter>
-		<!--Path to save life factors plot. File name must end with .png.-->
-		<outputPath>/Users/aurora/Temporary/lifeFactors.png</outputPath>
-		<!--Plot series naming options. This element and all its children are optional, if not supplied, default values will be set.-->
-		<seriesNaming>
-			<!--Include spectrum name to plot series names. This can be either 'true' or 'false'.-->
-			<includeSpectrumName>false</includeSpectrumName>
+	</equivalentStressAnalysis>
+	<equivalentStressAnalysis>
+		<id>29</id>
+		<stressSequenceId>23</stressSequenceId>
+		<equivalentStressAnalysisInputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/equivalentStressAnalysisInput_test.xml</equivalentStressAnalysisInputPath>
+	</equivalentStressAnalysis>
+	<plotLevelCrossingComparison>
+		<id>31</id>
+		<equivalentStressId>28</equivalentStressId>
+		<equivalentStressId>29</equivalentStressId>
+		<outputPath>/Users/aurora/Temporary/levelCrossingComparison.png</outputPath>
+		<seriesNaming><!--Include spectrum name to plot series names. This can be either 'true' or 'false'.-->
 			<includeStfName>true</includeStfName>
-			<includeElementId>false</includeElementId>
 			<includeMaterialName>false</includeMaterialName>
-			<includeOmissionLevel>false</includeOmissionLevel>
-			<includeAircraftProgram>false</includeAircraftProgram>
-			<includeAircraftSection>false</includeAircraftSection>
-			<includeFatigueMission>false</includeFatigueMission>
 		</seriesNaming>
-		<!--Plotting options. This element and all its children are optional, if not given, default values will be set.-->
-		<options>
-			<!--To include the life factor for basis fatigue mission (i.e. 1.0). This can be either 'true' or 'false'.-->
-			<includeBasisMission>true</includeBasisMission>
-			<!--Label visibility. This can be either 'true' or 'false'.-->
-			<showDataLabels>true</showDataLabels>
-		</options>
-	</plotLifeFactors>
+	</plotLevelCrossingComparison>
 </equinoxInput>

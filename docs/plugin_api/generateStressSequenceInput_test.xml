@@ -12,8 +12,6 @@
 			<method>Multiply</method></deltaP>
 		<deltaT>
 			<value>0.001</value>
-			<method>Multiply</method></deltaT></overallFactors>
-	<loadcaseFactors>
-		<mutPath>/Users/aurora/Temporary/A380PS_OWB1_p45_baseline.mut</mutPath>
-		<tableColumn>1</tableColumn>
-		<method>Multiply</method></loadcaseFactors></generateStressSequenceInput>
+			<method>Multiply</method></deltaT>
+	</overallFactors>
+</generateStressSequenceInput>
