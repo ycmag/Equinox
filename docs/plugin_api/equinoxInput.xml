@@ -842,7 +842,7 @@
 		<outputPath></outputPath>
 	</saveAnalysisOutputFile>
 	
-	<!--Shares referenced file with given recipent.-->
+	<!--Shares referenced file with given recipient.-->
 	<shareFile>
 		<id></id>
 		<!--The fileId references to all instruction sets beginning with 'save', 'export' or 'plot'.-->
