@@ -25,11 +25,11 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
 import equinox.data.Triple;
 import equinox.data.fileType.FlightDamageContributions;
 import equinox.data.fileType.SpectrumItem;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.task.serializableTask.SerializableSaveFlightDamageContributions;
@@ -71,10 +71,7 @@ public class SaveFlightDamageContributions extends InternalEquinoxTask<Path> imp
 	private final File output_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates save typical flight damage contributions task.
@@ -106,12 +103,7 @@ public class SaveFlightDamageContributions extends InternalEquinoxTask<Path> imp
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -119,7 +111,7 @@ public class SaveFlightDamageContributions extends InternalEquinoxTask<Path> imp
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -236,7 +228,7 @@ public class SaveFlightDamageContributions extends InternalEquinoxTask<Path> imp
 			Path output = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -256,7 +248,7 @@ public class SaveFlightDamageContributions extends InternalEquinoxTask<Path> imp
 			return;
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -270,7 +262,7 @@ public class SaveFlightDamageContributions extends InternalEquinoxTask<Path> imp
 			return;
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

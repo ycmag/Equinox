@@ -28,10 +28,10 @@ import java.util.concurrent.ExecutionException;
 import javax.imageio.ImageIO;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.StressSequence;
 import equinox.dataServer.remote.data.PilotPointImageType;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.PostProcessingTask;
 import equinox.task.automation.SingleInputTask;
@@ -57,10 +57,7 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 	private final PilotPointImageType plotType;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates save mission profile plot to file task.
@@ -79,12 +76,7 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -92,7 +84,7 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -114,11 +106,18 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 	@Override
 	protected Path call() throws Exception {
 
-		// get mission profile image
-		Image image = getImage();
+		// initialize image
+		Image image = null;
 
-		// write image to file and return file
-		return writeImageFile(image);
+		// get connection to database
+		try (Connection connection = Equinox.DBC_POOL.getConnection()) {
+
+			// get mission profile image
+			image = getImage(connection);
+
+			// write image
+			return writeImageFile(image);
+		}
 	}
 
 	@Override
@@ -133,7 +132,7 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 			Path file = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -149,7 +148,7 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -159,7 +158,7 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**
@@ -189,11 +188,13 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 	/**
 	 * Retrieves mission profile image from database.
 	 *
+	 * @param connection
+	 *            Database connection.
 	 * @return Mission profile image.
 	 * @throws Exception
 	 *             If exception occurs during process.
 	 */
-	private Image getImage() throws Exception {
+	private Image getImage(Connection connection) throws Exception {
 
 		// update progress info
 		updateMessage("Getting mission profile image from database...");
@@ -201,24 +202,20 @@ public class SaveStressSequencePlotToFile extends InternalEquinoxTask<Path> impl
 		// initialize image
 		Image image = null;
 
-		// get connection to database
-		try (Connection connection = Equinox.DBC_POOL.getConnection()) {
+		// create statement
+		try (Statement statement = connection.createStatement()) {
 
-			// create statement
-			try (Statement statement = connection.createStatement()) {
+			// create and execute query
+			String sql = "select image from " + plotType.getTableName() + " where id = " + sequence.getParentItem().getID();
+			try (ResultSet resultSet = statement.executeQuery(sql)) {
+				while (resultSet.next()) {
 
-				// create and execute query
-				String sql = "select image from " + plotType.getTableName() + " where id = " + sequence.getParentItem().getID();
-				try (ResultSet resultSet = statement.executeQuery(sql)) {
-					while (resultSet.next()) {
-
-						// set image
-						Blob blob = resultSet.getBlob("image");
-						if (blob != null) {
-							byte[] imageBytes = blob.getBytes(1L, (int) blob.length());
-							image = imageBytes == null ? null : new Image(new ByteArrayInputStream(imageBytes));
-							blob.free();
-						}
+					// set image
+					Blob blob = resultSet.getBlob("image");
+					if (blob != null) {
+						byte[] imageBytes = blob.getBytes(1L, (int) blob.length());
+						image = imageBytes == null ? null : new Image(new ByteArrayInputStream(imageBytes));
+						blob.free();
 					}
 				}
 			}

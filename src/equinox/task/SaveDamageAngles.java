@@ -27,11 +27,12 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.data.fileType.DamageAngle;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.MultipleInputTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
+import equinox.task.automation.MultipleInputTask;
 import equinox.task.serializableTask.SerializableSaveDamageAngles;
 import javafx.beans.property.BooleanProperty;
 import jxl.CellType;
@@ -71,10 +72,7 @@ public class SaveDamageAngles extends InternalEquinoxTask<Path> implements LongR
 	private volatile int inputThreshold_ = 0;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates save damage angles task.
@@ -98,22 +96,17 @@ public class SaveDamageAngles extends InternalEquinoxTask<Path> implements LongR
 	}
 
 	@Override
-	synchronized public void addAutomaticInput(AutomaticTaskOwner<DamageAngle> task, DamageAngle input, boolean executeInParallel) {
-		automaticInputAdded(task, input, executeInParallel, angles_, inputThreshold_);
+	synchronized public void addAutomaticInput(AutomaticTaskOwner<DamageAngle> task, DamageAngle input, ExecutionMode mode) {
+		automaticInputAdded(task, input, mode, angles_, inputThreshold_);
 	}
 
 	@Override
-	synchronized public void inputFailed(AutomaticTaskOwner<DamageAngle> task, boolean executeInParallel) {
-		inputThreshold_ = automaticInputFailed(task, executeInParallel, angles_, inputThreshold_);
+	synchronized public void inputFailed(AutomaticTaskOwner<DamageAngle> task, ExecutionMode mode) {
+		inputThreshold_ = automaticInputFailed(task, mode, angles_, inputThreshold_);
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -121,7 +114,7 @@ public class SaveDamageAngles extends InternalEquinoxTask<Path> implements LongR
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -219,7 +212,7 @@ public class SaveDamageAngles extends InternalEquinoxTask<Path> implements LongR
 			Path output = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -239,7 +232,7 @@ public class SaveDamageAngles extends InternalEquinoxTask<Path> implements LongR
 			return;
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -253,7 +246,7 @@ public class SaveDamageAngles extends InternalEquinoxTask<Path> implements LongR
 			return;
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

@@ -21,62 +21,17 @@
 		<id>2</id>
 		<downloadId>1</downloadId>
 	</addSpectrum>
+	<!--Adds STF file to referenced spectrum.-->
 	<addStf>
 		<id>3</id>
+		<!--The spectrumId refers to 'addSpectrum' instruction.-->
 		<spectrumId>2</spectrumId>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>NAME</attributeName>
-			<keyword>Fuselage_F26_MY</keyword>
-		</searchEntry>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>AC_PROGRAM</attributeName>
-			<keyword>a310</keyword>
-		</searchEntry>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>AC_SECTION</attributeName>
-			<keyword>sect13</keyword>
-		</searchEntry>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>FAT_MISSION</attributeName>
-			<keyword>61 Parabolas</keyword>
-		</searchEntry>
-	</addStf>
-	<addStf>
-		<id>36</id>
-		<spectrumId>2</spectrumId>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>NAME</attributeName>
-			<keyword>Fuselage_F26_TZ</keyword>
-		</searchEntry>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>AC_PROGRAM</attributeName>
-			<keyword>a310</keyword>
-		</searchEntry>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>AC_SECTION</attributeName>
-			<keyword>sect13</keyword>
-		</searchEntry>
-		<searchEntry>
-			<!--Pilot point attribute name. This can be one of 'NAME', 'SPECTRUM_NAME', 'AC_PROGRAM', 'AC_SECTION', 'FAT_MISSION', 'EID', 'FRAME_RIB_POSITION', 'STRINGER_POSITION', 'DATA_SOURCE', 'GENERATION_SOURCE', 'DELIVERY_REF_NUM', 'DESCRIPTION', 'ISSUE', 'FATIGUE_MATERIAL', 'PREFFAS_MATERIAL', 'LINEAR_MATERIAL'.-->
-			<attributeName>FAT_MISSION</attributeName>
-			<keyword>61 Parabolas</keyword>
-		</searchEntry>
+		<!--Path to STF file to add to workspace.-->
+		<stfPath>/Users/aurora/Temporary/Fuselage_F26_MY.stf</stfPath>
 	</addStf>
 	<generateStressSequence>
 		<id>22</id>
 		<stfId>3</stfId>
-		<inputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/generateStressSequenceInput_test.xml</inputPath>
-	</generateStressSequence>
-	<generateStressSequence>
-		<id>23</id>
-		<stfId>36</stfId>
 		<inputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/generateStressSequenceInput_test.xml</inputPath>
 	</generateStressSequence>
 	<equivalentStressAnalysis>
@@ -84,19 +39,51 @@
 		<stressSequenceId>22</stressSequenceId>
 		<equivalentStressAnalysisInputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/equivalentStressAnalysisInput_test.xml</equivalentStressAnalysisInputPath>
 	</equivalentStressAnalysis>
-	<equivalentStressAnalysis>
+	<!--Plots mission profile from referenced stress sequence to given output file.-->
+	<plotMissionProfile>
 		<id>29</id>
-		<stressSequenceId>23</stressSequenceId>
-		<equivalentStressAnalysisInputPath>/Users/aurora/EclipseWorkspace/Equinox/docs/plugin_api/equivalentStressAnalysisInput_test.xml</equivalentStressAnalysisInputPath>
-	</equivalentStressAnalysis>
-	<plotLevelCrossingComparison>
-		<id>31</id>
-		<equivalentStressId>28</equivalentStressId>
-		<equivalentStressId>29</equivalentStressId>
-		<outputPath>/Users/aurora/Temporary/levelCrossingComparison.png</outputPath>
-		<seriesNaming><!--Include spectrum name to plot series names. This can be either 'true' or 'false'.-->
-			<includeStfName>true</includeStfName>
-			<includeMaterialName>false</includeMaterialName>
-		</seriesNaming>
-	</plotLevelCrossingComparison>
+		<!--The stressSequenceId refers to 'generateStressSequence' instruction.-->
+		<stressSequenceId>22</stressSequenceId>
+		<!--Path to save mission profile plot. File name must end with .png.-->
+		<outputPath>/Users/aurora/Temporary/missionProfile.png</outputPath>
+	</plotMissionProfile>
+	
+	<!--Exports pilot point to zip archive. The archive contains pilot point upload information.-->
+	<exportStf>
+		<id>30</id>
+		<!--The stfId refers to 'addStf' instruction.-->
+		<stfId>3</stfId>
+		<!--Pilot point attribute. Multiple pilotPointInfo elements can be given for various pilot point attributes. This element is optional.-->
+		<pilotPointInfo>
+			<!--Pilot point attribute name. This can be one of 'fatigueMission', 'description', 'dataSource', 'generationSource', 'deliveryReference', 'issue', 'eid', 'elementType', 'framePosition', 'stringerPosition', 'fatigueMaterial', 'preffasMaterial' or 'linearMaterial'.-->
+			<attributeName>fatigueMission</attributeName>
+			<attributeValue>61 Parabolas</attributeValue>
+		</pilotPointInfo>
+		<pilotPointInfo>
+			<attributeName>description</attributeName>
+			<attributeValue>Contains loads. Loads-to-stress factor: 0.001</attributeValue>
+		</pilotPointInfo>
+		<pilotPointInfo>
+			<attributeName>dataSource</attributeName>
+			<attributeValue>B010RP1340757, B0010RP1421908, B010RP1338593</attributeValue>
+		</pilotPointInfo>
+		<pilotPointInfo>
+			<attributeName>generationSource</attributeName>
+			<attributeValue>Manual</attributeValue>
+		</pilotPointInfo>
+		<pilotPointInfo>
+			<attributeName>deliveryReference</attributeName>
+			<attributeValue>B022RP1402750</attributeValue>
+		</pilotPointInfo>
+		<pilotPointInfo>
+			<attributeName>issue</attributeName>
+			<attributeValue>v1.0</attributeValue>
+		</pilotPointInfo>
+		<pilotPointInfo>
+			<attributeName>framePosition</attributeName>
+			<attributeValue>FR26</attributeValue>
+		</pilotPointInfo>
+		<!--Path to where the pilot point will be exported. File name must end with .zip.-->
+		<outputPath>/Users/aurora/Temporary/export.zip</outputPath>
+	</exportStf>
 </equinoxInput>

@@ -30,6 +30,8 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import equinox.Equinox;
 import equinox.controller.CompareDamageContributionsViewPanel;
 import equinox.controller.ViewPanel;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.data.Pair;
 import equinox.data.fileType.LoadcaseDamageContributions;
 import equinox.data.fileType.SpectrumItem;
@@ -37,9 +39,8 @@ import equinox.data.input.CompareDamageContributionsInput;
 import equinox.dataServer.remote.data.ContributionType;
 import equinox.plugin.FileType;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.MultipleInputTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
+import equinox.task.automation.MultipleInputTask;
 
 /**
  * Class for plot damage comparison task.
@@ -63,10 +64,7 @@ public class PlotDamageComparison extends InternalEquinoxTask<CategoryDataset> i
 	private volatile int inputThreshold_ = 0;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Pair<CategoryDataset, ContributionType>>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Pair<CategoryDataset, ContributionType>>> automaticTasks_ = null;
 
 	/**
 	 * Creates plot damage comparison task.
@@ -98,22 +96,17 @@ public class PlotDamageComparison extends InternalEquinoxTask<CategoryDataset> i
 	}
 
 	@Override
-	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, boolean executeInParallel) {
-		automaticInputAdded(task, input, executeInParallel, contributions_, inputThreshold_);
+	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, ExecutionMode mode) {
+		automaticInputAdded(task, input, mode, contributions_, inputThreshold_);
 	}
 
 	@Override
-	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, boolean executeInParallel) {
-		inputThreshold_ = automaticInputFailed(task, executeInParallel, contributions_, inputThreshold_);
+	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, ExecutionMode mode) {
+		inputThreshold_ = automaticInputFailed(task, mode, contributions_, inputThreshold_);
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Pair<CategoryDataset, ContributionType>> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Pair<CategoryDataset, ContributionType>> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -121,7 +114,7 @@ public class PlotDamageComparison extends InternalEquinoxTask<CategoryDataset> i
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Pair<CategoryDataset, ContributionType>>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Pair<CategoryDataset, ContributionType>>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -238,7 +231,7 @@ public class PlotDamageComparison extends InternalEquinoxTask<CategoryDataset> i
 
 			// automatic task
 			else {
-				automaticTaskOwnerSucceeded(new Pair<>(dataset, contributionType_), automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(new Pair<>(dataset, contributionType_), automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -255,7 +248,7 @@ public class PlotDamageComparison extends InternalEquinoxTask<CategoryDataset> i
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -265,7 +258,7 @@ public class PlotDamageComparison extends InternalEquinoxTask<CategoryDataset> i
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

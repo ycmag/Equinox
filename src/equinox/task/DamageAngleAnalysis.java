@@ -37,6 +37,7 @@ import equinox.data.DT1PointInterpolator;
 import equinox.data.DT2PointsInterpolator;
 import equinox.data.DTInterpolation;
 import equinox.data.DTInterpolator;
+import equinox.data.EmbeddedTask;
 import equinox.data.IsamiSubVersion;
 import equinox.data.IsamiVersion;
 import equinox.data.LoadcaseFactor;
@@ -59,7 +60,6 @@ import equinox.process.InbuiltDAA;
 import equinox.process.SafeDAA;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.task.serializableTask.SerializableDamageAngleAnalysis;
@@ -132,10 +132,7 @@ public class DamageAngleAnalysis extends TemporaryFileCreatingTask<DamageAngle> 
 	private ESAProcess<Double[][]> equivalentStressAnalysis_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<DamageAngle>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<DamageAngle>> automaticTasks_ = null;
 
 	/**
 	 * Creates damage angle analysis task.
@@ -195,12 +192,7 @@ public class DamageAngleAnalysis extends TemporaryFileCreatingTask<DamageAngle> 
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<DamageAngle> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<DamageAngle> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -208,7 +200,7 @@ public class DamageAngleAnalysis extends TemporaryFileCreatingTask<DamageAngle> 
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<DamageAngle>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<DamageAngle>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -362,11 +354,11 @@ public class DamageAngleAnalysis extends TemporaryFileCreatingTask<DamageAngle> 
 				// add to file tree
 				stfFile_.getChildren().add(0, angle);
 
-				// plot and save damage angles
-				taskPanel_.getOwner().runTaskSequentially(new SaveDamageAnglePlot(angle));
+				// post-process results
+				postProcess(angle);
 
 				// manage automatic tasks
-				automaticTaskOwnerSucceeded(angle, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(angle, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -393,7 +385,7 @@ public class DamageAngleAnalysis extends TemporaryFileCreatingTask<DamageAngle> 
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -408,7 +400,26 @@ public class DamageAngleAnalysis extends TemporaryFileCreatingTask<DamageAngle> 
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
+	}
+
+	/**
+	 * Post-processes results of this task.
+	 *
+	 * @param angle
+	 *            Damage angle.
+	 */
+	private void postProcess(DamageAngle angle) {
+
+		// plot and save damage angles
+		try {
+			taskPanel_.getOwner().runTaskSilently(new SaveDamageAnglePlot(angle), false).get();
+		}
+
+		// exception occurred (ignore since it is handled within the task)
+		catch (Exception e) {
+			// ignore
+		}
 	}
 
 	/**

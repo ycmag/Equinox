@@ -22,7 +22,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import equinox.Equinox;
 import equinox.data.DPRatio;
@@ -30,6 +32,7 @@ import equinox.data.DT1PointInterpolator;
 import equinox.data.DT2PointsInterpolator;
 import equinox.data.DTInterpolation;
 import equinox.data.DTInterpolator;
+import equinox.data.EmbeddedTask;
 import equinox.data.IncrementStress;
 import equinox.data.LoadcaseFactor;
 import equinox.data.Segment;
@@ -46,7 +49,6 @@ import equinox.data.fileType.StressSequence;
 import equinox.data.input.GenerateStressSequenceInput;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.task.serializableTask.SerializableGenerateStressSequence;
@@ -68,10 +70,7 @@ public class GenerateStressSequence extends InternalEquinoxTask<StressSequence> 
 	private final GenerateStressSequenceInput input_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<SpectrumItem>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<SpectrumItem>> automaticTasks_ = null;
 
 	/**
 	 * Creates generate stress sequence task.
@@ -87,12 +86,7 @@ public class GenerateStressSequence extends InternalEquinoxTask<StressSequence> 
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<SpectrumItem> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<SpectrumItem> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -100,7 +94,7 @@ public class GenerateStressSequence extends InternalEquinoxTask<StressSequence> 
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<SpectrumItem>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<SpectrumItem>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -194,21 +188,47 @@ public class GenerateStressSequence extends InternalEquinoxTask<StressSequence> 
 			// add to STF file
 			stfFile_.getChildren().add(sequence);
 
-			// generate and save plots
-			taskPanel_.getOwner().runTaskSilently(new SaveMissionProfilePlot(sequence), true);
-			taskPanel_.getOwner().runTaskSilently(new SaveLongestFlightPlot(sequence), true);
-			taskPanel_.getOwner().runTaskSilently(new SaveHOFlightPlot(sequence), true);
-			taskPanel_.getOwner().runTaskSilently(new SaveHSFlightPlot(sequence), true);
-			taskPanel_.getOwner().runTaskSilently(new SaveNumPeaksPlot(sequence), true);
-			taskPanel_.getOwner().runTaskSilently(new SaveFlightOccurrencePlot(sequence), true);
+			// post-process results
+			postProcess(sequence);
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(sequence, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(sequence, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
 		catch (InterruptedException | ExecutionException e) {
 			handleResultRetrievalException(e);
+		}
+	}
+
+	/**
+	 * Post-processes results of this task.
+	 *
+	 * @param sequence
+	 *            Stress sequence.
+	 */
+	private void postProcess(StressSequence sequence) {
+
+		// generate and save plots
+		List<Future<?>> results = new ArrayList<>();
+		results.add(taskPanel_.getOwner().runTaskSilently(new SaveMissionProfilePlot(sequence), false));
+		results.add(taskPanel_.getOwner().runTaskSilently(new SaveLongestFlightPlot(sequence), false));
+		results.add(taskPanel_.getOwner().runTaskSilently(new SaveHOFlightPlot(sequence), false));
+		results.add(taskPanel_.getOwner().runTaskSilently(new SaveHSFlightPlot(sequence), false));
+		results.add(taskPanel_.getOwner().runTaskSilently(new SaveNumPeaksPlot(sequence), false));
+		results.add(taskPanel_.getOwner().runTaskSilently(new SaveFlightOccurrencePlot(sequence), false));
+
+		// wait for results to complete
+		for (Future<?> result : results) {
+
+			try {
+				result.get();
+			}
+
+			// exception occurred (ignore since it is handled within the task)
+			catch (Exception e) {
+				// ignore
+			}
 		}
 	}
 
@@ -219,7 +239,7 @@ public class GenerateStressSequence extends InternalEquinoxTask<StressSequence> 
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -229,7 +249,7 @@ public class GenerateStressSequence extends InternalEquinoxTask<StressSequence> 
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

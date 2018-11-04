@@ -18,10 +18,10 @@ package equinox.task;
 import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.Flight;
 import equinox.data.fileType.StressSequence;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -40,14 +40,11 @@ public class GetTypicalFlight extends InternalEquinoxTask<Flight> implements Sho
 	private StressSequence stressSequence;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Flight>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Flight>> automaticTasks_ = null;
 
 	/**
 	 * Creates get flight task.
-	 * 
+	 *
 	 * @param flightName
 	 *            Typical flight name.
 	 */
@@ -61,12 +58,7 @@ public class GetTypicalFlight extends InternalEquinoxTask<Flight> implements Sho
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Flight> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Flight> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -74,7 +66,7 @@ public class GetTypicalFlight extends InternalEquinoxTask<Flight> implements Sho
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Flight>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Flight>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -118,7 +110,7 @@ public class GetTypicalFlight extends InternalEquinoxTask<Flight> implements Sho
 			Flight flight = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(flight, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(flight, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -134,7 +126,7 @@ public class GetTypicalFlight extends InternalEquinoxTask<Flight> implements Sho
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -144,6 +136,6 @@ public class GetTypicalFlight extends InternalEquinoxTask<Flight> implements Sho
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 }

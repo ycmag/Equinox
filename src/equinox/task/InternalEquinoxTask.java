@@ -16,10 +16,11 @@
 package equinox.task;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,6 +30,7 @@ import com.jcraft.jsch.JSchException;
 
 import equinox.Equinox;
 import equinox.controller.TaskPanel;
+import equinox.data.ExecutionMode;
 import equinox.exchangeServer.remote.data.ExchangeUser;
 import equinox.exchangeServer.remote.message.InstructionSetRunRequest;
 import equinox.exchangeServer.remote.message.ShareFile;
@@ -59,10 +61,7 @@ public abstract class InternalEquinoxTask<V> extends EquinoxTask<V> {
 	protected Logger logger_;
 
 	/** Follower tasks. */
-	private List<InternalEquinoxTask<?>> followerTasks_ = null;
-
-	/** Follower task execution mode. */
-	private boolean executeFollowerTasksInParallel_ = true;
+	private HashMap<InternalEquinoxTask<?>, ExecutionMode> followerTasks_ = null;
 
 	/**
 	 * Sets owner panel to this task.
@@ -77,26 +76,18 @@ public abstract class InternalEquinoxTask<V> extends EquinoxTask<V> {
 	}
 
 	/**
-	 * Sets follower task execution mode. By default, follower tasks will be executed in parallel.
-	 *
-	 * @param isParallel
-	 *            True for parallel execution.
-	 */
-	public void setFollowerTaskExecutionMode(boolean isParallel) {
-		executeFollowerTasksInParallel_ = isParallel;
-	}
-
-	/**
 	 * Adds follower task.
 	 *
 	 * @param task
 	 *            Task to add.
+	 * @param mode
+	 *            Execution mode.
 	 */
-	public void addFollowerTask(InternalEquinoxTask<?> task) {
+	public void addFollowerTask(InternalEquinoxTask<?> task, ExecutionMode mode) {
 		if (followerTasks_ == null) {
-			followerTasks_ = new ArrayList<>();
+			followerTasks_ = new HashMap<>();
 		}
-		followerTasks_.add(task);
+		followerTasks_.put(task, mode);
 	}
 
 	/**
@@ -104,7 +95,7 @@ public abstract class InternalEquinoxTask<V> extends EquinoxTask<V> {
 	 *
 	 * @return List containing the follower tasks or null if no follower tasks are defined.
 	 */
-	public List<InternalEquinoxTask<?>> getFollowerTasks() {
+	public HashMap<InternalEquinoxTask<?>, ExecutionMode> getFollowerTasks() {
 		return followerTasks_;
 	}
 
@@ -332,8 +323,14 @@ public abstract class InternalEquinoxTask<V> extends EquinoxTask<V> {
 			return;
 
 		// loop over follower tasks
-		for (InternalEquinoxTask<?> task : followerTasks_) {
-			taskPanel_.getOwner().runTaskSilently(task, !executeFollowerTasksInParallel_);
+		Iterator<Entry<InternalEquinoxTask<?>, ExecutionMode>> iterator = followerTasks_.entrySet().iterator();
+		while (iterator.hasNext()) {
+			Entry<InternalEquinoxTask<?>, ExecutionMode> entry = iterator.next();
+			ExecutionMode mode = entry.getValue();
+			if (mode.equals(ExecutionMode.NO_RUN)) {
+				continue;
+			}
+			taskPanel_.getOwner().runTaskSilently(entry.getKey(), mode.equals(ExecutionMode.SEQUENTIAL));
 		}
 	}
 

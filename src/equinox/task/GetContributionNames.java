@@ -26,13 +26,14 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.data.Pair;
 import equinox.data.fileType.STFFileBucket;
 import equinox.data.fileType.SpectrumItem;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.MultipleInputTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
+import equinox.task.automation.MultipleInputTask;
 
 /**
  * Class for get contribution names task.1
@@ -53,10 +54,7 @@ public class GetContributionNames extends InternalEquinoxTask<List<String>> impl
 	private volatile int inputThreshold_ = 0;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Pair<List<SpectrumItem>, List<String>>>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Pair<List<SpectrumItem>, List<String>>>> automaticTasks_ = null;
 
 	/**
 	 * Creates get contribution names task.
@@ -77,22 +75,17 @@ public class GetContributionNames extends InternalEquinoxTask<List<String>> impl
 	}
 
 	@Override
-	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, boolean executeInParallel) {
-		automaticInputAdded(task, input, executeInParallel, items_, inputThreshold_);
+	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, ExecutionMode mode) {
+		automaticInputAdded(task, input, mode, items_, inputThreshold_);
 	}
 
 	@Override
-	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, boolean executeInParallel) {
-		inputThreshold_ = automaticInputFailed(task, executeInParallel, items_, inputThreshold_);
+	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, ExecutionMode mode) {
+		inputThreshold_ = automaticInputFailed(task, mode, items_, inputThreshold_);
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Pair<List<SpectrumItem>, List<String>>> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Pair<List<SpectrumItem>, List<String>>> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -100,7 +93,7 @@ public class GetContributionNames extends InternalEquinoxTask<List<String>> impl
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Pair<List<SpectrumItem>, List<String>>>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Pair<List<SpectrumItem>, List<String>>>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -149,7 +142,7 @@ public class GetContributionNames extends InternalEquinoxTask<List<String>> impl
 
 			// automatic task
 			else {
-				automaticTaskOwnerSucceeded(new Pair<>(items_, contributionNames), automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(new Pair<>(items_, contributionNames), automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -166,7 +159,7 @@ public class GetContributionNames extends InternalEquinoxTask<List<String>> impl
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -176,7 +169,7 @@ public class GetContributionNames extends InternalEquinoxTask<List<String>> impl
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

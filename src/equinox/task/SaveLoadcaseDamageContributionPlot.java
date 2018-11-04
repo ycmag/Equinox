@@ -41,12 +41,12 @@ import org.jfree.util.TableOrder;
 
 import equinox.Equinox;
 import equinox.controller.DamageContributionViewPanel;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.LoadcaseDamageContributions;
 import equinox.data.ui.PieLabelGenerator;
 import equinox.plugin.FileType;
 import equinox.process.PlotDamageContributionsProcess;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -69,10 +69,7 @@ public class SaveLoadcaseDamageContributionPlot extends TemporaryFileCreatingTas
 	private boolean saveToDatabase_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates save damage contribution plot task.
@@ -96,12 +93,7 @@ public class SaveLoadcaseDamageContributionPlot extends TemporaryFileCreatingTas
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -109,7 +101,7 @@ public class SaveLoadcaseDamageContributionPlot extends TemporaryFileCreatingTas
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -161,7 +153,7 @@ public class SaveLoadcaseDamageContributionPlot extends TemporaryFileCreatingTas
 			Path output = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -181,7 +173,7 @@ public class SaveLoadcaseDamageContributionPlot extends TemporaryFileCreatingTas
 			return;
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -195,7 +187,7 @@ public class SaveLoadcaseDamageContributionPlot extends TemporaryFileCreatingTas
 			return;
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

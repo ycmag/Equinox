@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.data.fileType.ExternalFatigueEquivalentStress;
 import equinox.data.fileType.ExternalLinearEquivalentStress;
 import equinox.data.fileType.ExternalPreffasEquivalentStress;
@@ -39,9 +41,8 @@ import equinox.data.fileType.LinearEquivalentStress;
 import equinox.data.fileType.PreffasEquivalentStress;
 import equinox.data.fileType.SpectrumItem;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.MultipleInputTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
+import equinox.task.automation.MultipleInputTask;
 import equinox.task.serializableTask.SerializableSaveEquivalentStresses;
 import javafx.beans.property.BooleanProperty;
 import jxl.CellType;
@@ -81,10 +82,7 @@ public class SaveEquivalentStresses extends InternalEquinoxTask<Path> implements
 	private volatile int inputThreshold_ = 0;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates save equivalent stresses task.
@@ -108,22 +106,17 @@ public class SaveEquivalentStresses extends InternalEquinoxTask<Path> implements
 	}
 
 	@Override
-	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, boolean executeInParallel) {
-		automaticInputAdded(task, input, executeInParallel, stresses_, inputThreshold_);
+	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, ExecutionMode mode) {
+		automaticInputAdded(task, input, mode, stresses_, inputThreshold_);
 	}
 
 	@Override
-	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, boolean executeInParallel) {
-		inputThreshold_ = automaticInputFailed(task, executeInParallel, stresses_, inputThreshold_);
+	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, ExecutionMode mode) {
+		inputThreshold_ = automaticInputFailed(task, mode, stresses_, inputThreshold_);
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -131,7 +124,7 @@ public class SaveEquivalentStresses extends InternalEquinoxTask<Path> implements
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -253,7 +246,7 @@ public class SaveEquivalentStresses extends InternalEquinoxTask<Path> implements
 			Path file = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -269,7 +262,7 @@ public class SaveEquivalentStresses extends InternalEquinoxTask<Path> implements
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -279,7 +272,7 @@ public class SaveEquivalentStresses extends InternalEquinoxTask<Path> implements
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

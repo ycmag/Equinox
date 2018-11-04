@@ -19,16 +19,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.ExternalFlight;
 import equinox.data.fileType.ExternalStressSequence;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
 /**
  * Class for select all external typical flights task.
- * 
+ *
  * @author Murat Artim
  * @date 10 Sep 2018
  * @time 10:53:13
@@ -39,10 +39,7 @@ public class SelectAllExternalFlights extends InternalEquinoxTask<List<ExternalF
 	private ExternalStressSequence file_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<List<ExternalFlight>>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<List<ExternalFlight>>> automaticTasks_ = null;
 
 	/**
 	 * Creates select all external typical flights task.
@@ -60,12 +57,7 @@ public class SelectAllExternalFlights extends InternalEquinoxTask<List<ExternalF
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<List<ExternalFlight>> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<List<ExternalFlight>> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -73,7 +65,7 @@ public class SelectAllExternalFlights extends InternalEquinoxTask<List<ExternalF
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<List<ExternalFlight>>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<List<ExternalFlight>>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -106,7 +98,7 @@ public class SelectAllExternalFlights extends InternalEquinoxTask<List<ExternalF
 
 			// manage automatic tasks
 			if (automaticTasks_ != null) {
-				automaticTaskOwnerSucceeded(flights, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(flights, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -123,7 +115,7 @@ public class SelectAllExternalFlights extends InternalEquinoxTask<List<ExternalF
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -133,6 +125,6 @@ public class SelectAllExternalFlights extends InternalEquinoxTask<List<ExternalF
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 }

@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
 import equinox.data.AnalysisEngine;
+import equinox.data.EmbeddedTask;
 import equinox.data.FastESAOutput;
 import equinox.data.IsamiSubVersion;
 import equinox.data.IsamiVersion;
@@ -58,7 +59,6 @@ import equinox.process.SafeFastESA;
 import equinox.process.SafeFlightDCA;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 
 /**
@@ -116,10 +116,7 @@ public class FastEquivalentStressAnalysis extends TemporaryFileCreatingTask<Spec
 	private ESAProcess<?> analysisProcess_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<SpectrumItem>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<SpectrumItem>> automaticTasks_ = null;
 
 	/**
 	 * Creates fast equivalent stress analysis task.
@@ -226,12 +223,7 @@ public class FastEquivalentStressAnalysis extends TemporaryFileCreatingTask<Spec
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<SpectrumItem> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<SpectrumItem> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -239,7 +231,7 @@ public class FastEquivalentStressAnalysis extends TemporaryFileCreatingTask<Spec
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<SpectrumItem>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<SpectrumItem>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -329,18 +321,37 @@ public class FastEquivalentStressAnalysis extends TemporaryFileCreatingTask<Spec
 
 			// plot and save contributions
 			if (item instanceof FlightDamageContributions) {
-				taskPanel_.getOwner().runTaskSequentially(new SaveFlightDamageContributionPlot((FlightDamageContributions) item, true, null));
+				postProcess((FlightDamageContributions) item);
 			}
 
 			// manage automatic tasks
 			if (automaticTasks_ != null) {
-				automaticTaskOwnerSucceeded(item, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(item, automaticTasks_, taskPanel_);
 			}
 		}
 
 		// exception occurred
 		catch (InterruptedException | ExecutionException e) {
 			handleResultRetrievalException(e);
+		}
+	}
+
+	/**
+	 * Post-processes results of this task.
+	 *
+	 * @param result
+	 *            Task result.
+	 */
+	private void postProcess(FlightDamageContributions result) {
+
+		// plot and save contributions
+		try {
+			taskPanel_.getOwner().runTaskSilently(new SaveFlightDamageContributionPlot(result, true, null), false).get();
+		}
+
+		// exception occurred (ignore since it is handled within the task)
+		catch (Exception e) {
+			// ignore
 		}
 	}
 
@@ -356,7 +367,7 @@ public class FastEquivalentStressAnalysis extends TemporaryFileCreatingTask<Spec
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -371,7 +382,7 @@ public class FastEquivalentStressAnalysis extends TemporaryFileCreatingTask<Spec
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

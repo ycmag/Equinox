@@ -21,10 +21,10 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.Spectrum;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -44,10 +44,7 @@ public class SaveSpectrumInfo extends InternalEquinoxTask<Spectrum> implements S
 	private final String[] info_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Spectrum>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Spectrum>> automaticTasks_ = null;
 
 	/**
 	 * Creates save spectrum info task.
@@ -68,12 +65,7 @@ public class SaveSpectrumInfo extends InternalEquinoxTask<Spectrum> implements S
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Spectrum> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Spectrum> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -81,7 +73,7 @@ public class SaveSpectrumInfo extends InternalEquinoxTask<Spectrum> implements S
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Spectrum>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Spectrum>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -158,7 +150,7 @@ public class SaveSpectrumInfo extends InternalEquinoxTask<Spectrum> implements S
 
 			// manage automatic tasks
 			else {
-				automaticTaskOwnerSucceeded(spectrum, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(spectrum, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -175,7 +167,7 @@ public class SaveSpectrumInfo extends InternalEquinoxTask<Spectrum> implements S
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -185,7 +177,7 @@ public class SaveSpectrumInfo extends InternalEquinoxTask<Spectrum> implements S
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

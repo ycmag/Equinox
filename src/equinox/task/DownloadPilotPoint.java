@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import equinox.data.EmbeddedTask;
 import equinox.data.Pair;
 import equinox.data.fileType.STFFile;
 import equinox.data.fileType.Spectrum;
@@ -41,7 +42,6 @@ import equinox.plugin.FileType;
 import equinox.serverUtilities.FilerConnection;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.utility.Utility;
@@ -76,10 +76,7 @@ public class DownloadPilotPoint extends TemporaryFileCreatingTask<AddSTFFiles> i
 	private final AtomicReference<DataMessage> serverMessageRef;
 
 	/** Automatic tasks. The key is the STF file name and the value is the task. */
-	private HashMap<String, AutomaticTask<STFFile>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<STFFile>> automaticTasks_ = null;
 
 	/**
 	 * Creates download pilot point task.
@@ -121,12 +118,7 @@ public class DownloadPilotPoint extends TemporaryFileCreatingTask<AddSTFFiles> i
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<STFFile> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<STFFile> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -134,7 +126,7 @@ public class DownloadPilotPoint extends TemporaryFileCreatingTask<AddSTFFiles> i
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<STFFile>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<STFFile>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -202,10 +194,9 @@ public class DownloadPilotPoint extends TemporaryFileCreatingTask<AddSTFFiles> i
 
 				// pass automatic tasks to resulting task
 				if (automaticTasks_ != null) {
-					task.setAutomaticTaskExecutionMode(executeAutomaticTasksInParallel_);
-					Iterator<Entry<String, AutomaticTask<STFFile>>> iterator = automaticTasks_.entrySet().iterator();
+					Iterator<Entry<String, EmbeddedTask<STFFile>>> iterator = automaticTasks_.entrySet().iterator();
 					while (iterator.hasNext()) {
-						Entry<String, AutomaticTask<STFFile>> entry = iterator.next();
+						Entry<String, EmbeddedTask<STFFile>> entry = iterator.next();
 						task.addAutomaticTask(entry.getKey(), entry.getValue());
 					}
 				}
@@ -228,7 +219,7 @@ public class DownloadPilotPoint extends TemporaryFileCreatingTask<AddSTFFiles> i
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -238,7 +229,7 @@ public class DownloadPilotPoint extends TemporaryFileCreatingTask<AddSTFFiles> i
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

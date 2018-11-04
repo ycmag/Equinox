@@ -18,6 +18,8 @@ package equinox.task.automation;
 import java.util.HashMap;
 
 import equinox.controller.TaskPanel;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.task.InternalEquinoxTask;
 
 /**
@@ -37,14 +39,6 @@ import equinox.task.InternalEquinoxTask;
 public interface AutomaticTaskOwner<V> {
 
 	/**
-	 * Sets automatic task execution mode. By default, tasks will be executed in parallel.
-	 *
-	 * @param isParallel
-	 *            True for parallel execution.
-	 */
-	void setAutomaticTaskExecutionMode(boolean isParallel);
-
-	/**
 	 * Adds single input automatic task.
 	 *
 	 * @param taskID
@@ -52,14 +46,14 @@ public interface AutomaticTaskOwner<V> {
 	 * @param task
 	 *            Task to add.
 	 */
-	void addAutomaticTask(String taskID, AutomaticTask<V> task);
+	void addAutomaticTask(String taskID, EmbeddedTask<V> task);
 
 	/**
 	 * Returns a mapping containing the automatic tasks or null if no automatic tasks are defined.
 	 *
 	 * @return Mapping containing automatic tasks or null if no automatic tasks are defined.
 	 */
-	HashMap<String, AutomaticTask<V>> getAutomaticTasks();
+	HashMap<String, EmbeddedTask<V>> getAutomaticTasks();
 
 	/**
 	 * This method should be called from <code>succeeded</code> method of this task. Performs the following operations:
@@ -75,31 +69,37 @@ public interface AutomaticTaskOwner<V> {
 	 *            Automatic tasks.
 	 * @param taskPanel
 	 *            Task panel.
-	 * @param executeInParallel
-	 *            True to execute <code>SingleInputTask</code>s in parallel.
 	 */
-	default void automaticTaskOwnerSucceeded(V input, HashMap<String, AutomaticTask<V>> automaticTasks, TaskPanel taskPanel, boolean executeInParallel) {
+	default void automaticTaskOwnerSucceeded(V input, HashMap<String, EmbeddedTask<V>> automaticTasks, TaskPanel taskPanel) {
 
 		// there are no automatic tasks
 		if (automaticTasks == null)
 			return;
 
 		// loop over automatic tasks
-		for (AutomaticTask<V> task : automaticTasks.values()) {
+		for (EmbeddedTask<V> task : automaticTasks.values()) {
+
+			// get automatic task
+			AutomaticTask<V> aTask = task.getTask();
 
 			// multiple input task (add input)
-			if (task instanceof MultipleInputTask<?>) {
-				((MultipleInputTask<V>) task).addAutomaticInput(this, input, executeInParallel);
+			if (aTask instanceof MultipleInputTask<?>) {
+				((MultipleInputTask<V>) aTask).addAutomaticInput(this, input, task.getExecutionMode());
 			}
 
 			// single input task
 			else {
 
 				// set input
-				((SingleInputTask<V>) task).setAutomaticInput(input);
+				((SingleInputTask<V>) aTask).setAutomaticInput(input);
+
+				// no run
+				if (task.getExecutionMode().equals(ExecutionMode.NO_RUN)) {
+					continue;
+				}
 
 				// execute
-				taskPanel.getOwner().runTaskSilently((InternalEquinoxTask<?>) task, !executeInParallel);
+				taskPanel.getOwner().runTaskSilently((InternalEquinoxTask<?>) aTask, task.getExecutionMode().equals(ExecutionMode.SEQUENTIAL));
 			}
 		}
 	}
@@ -118,28 +118,33 @@ public interface AutomaticTaskOwner<V> {
 	 *            Automatic task.
 	 * @param taskPanel
 	 *            Task panel.
-	 * @param executeInParallel
-	 *            True to execute <code>SingleInputTask</code>s in parallel.
 	 */
-	default void automaticTaskOwnerSucceeded(V input, AutomaticTask<V> task, TaskPanel taskPanel, boolean executeInParallel) {
+	default void automaticTaskOwnerSucceeded(V input, EmbeddedTask<V> task, TaskPanel taskPanel) {
 
 		// null task
 		if (task == null)
 			return;
 
+		// get automatic task
+		AutomaticTask<V> aTask = task.getTask();
+
 		// multiple input task (add input)
-		if (task instanceof MultipleInputTask<?>) {
-			((MultipleInputTask<V>) task).addAutomaticInput(this, input, executeInParallel);
+		if (aTask instanceof MultipleInputTask<?>) {
+			((MultipleInputTask<V>) aTask).addAutomaticInput(this, input, task.getExecutionMode());
 		}
 
 		// single input task
 		else {
 
 			// set input
-			((SingleInputTask<V>) task).setAutomaticInput(input);
+			((SingleInputTask<V>) aTask).setAutomaticInput(input);
+
+			// no run
+			if (task.getExecutionMode().equals(ExecutionMode.NO_RUN))
+				return;
 
 			// execute
-			taskPanel.getOwner().runTaskSilently((InternalEquinoxTask<?>) task, !executeInParallel);
+			taskPanel.getOwner().runTaskSilently((InternalEquinoxTask<?>) aTask, task.getExecutionMode().equals(ExecutionMode.SEQUENTIAL));
 		}
 	}
 
@@ -148,21 +153,22 @@ public interface AutomaticTaskOwner<V> {
 	 *
 	 * @param automaticTasks
 	 *            Automatic tasks.
-	 * @param executeInParallel
-	 *            True to execute <code>SingleInputTask</code>s in parallel.
 	 */
-	default void automaticTaskOwnerFailed(HashMap<String, AutomaticTask<V>> automaticTasks, boolean executeInParallel) {
+	default void automaticTaskOwnerFailed(HashMap<String, EmbeddedTask<V>> automaticTasks) {
 
 		// there are no automatic tasks
 		if (automaticTasks == null)
 			return;
 
 		// loop over automatic tasks
-		for (AutomaticTask<V> task : automaticTasks.values()) {
+		for (EmbeddedTask<V> task : automaticTasks.values()) {
+
+			// get automatic task
+			AutomaticTask<V> aTask = task.getTask();
 
 			// multiple input task (add input)
-			if (task instanceof MultipleInputTask<?>) {
-				((MultipleInputTask<V>) task).inputFailed(this, executeInParallel);
+			if (aTask instanceof MultipleInputTask<?>) {
+				((MultipleInputTask<V>) aTask).inputFailed(this, task.getExecutionMode());
 			}
 		}
 	}

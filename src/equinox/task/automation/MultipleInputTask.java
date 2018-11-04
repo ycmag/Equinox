@@ -17,6 +17,7 @@ package equinox.task.automation;
 
 import java.util.List;
 
+import equinox.data.ExecutionMode;
 import equinox.task.InternalEquinoxTask;
 
 /**
@@ -46,10 +47,10 @@ public interface MultipleInputTask<V> extends AutomaticTask<V> {
 	 *            Source task (i.e. the caller).
 	 * @param input
 	 *            Input.
-	 * @param executeInParallel
-	 *            True to execute this task in parallel mode (if the above mentioned condition is met).
+	 * @param mode
+	 *            Execution mode.
 	 */
-	void addAutomaticInput(AutomaticTaskOwner<V> task, V input, boolean executeInParallel);
+	void addAutomaticInput(AutomaticTaskOwner<V> task, V input, ExecutionMode mode);
 
 	/**
 	 * Notifies this task that an input failed to arrive. Source tasks would normally call this method from their <code>failed</code> or <code>canceled</code> methods. The implementation could do one of the following:
@@ -61,10 +62,10 @@ public interface MultipleInputTask<V> extends AutomaticTask<V> {
 	 *
 	 * @param task
 	 *            Source task (i.e. the caller).
-	 * @param executeInParallel
-	 *            True to execute this task in parallel mode (if the above mentioned condition is met).
+	 * @param mode
+	 *            Execution mode.
 	 */
-	void inputFailed(AutomaticTaskOwner<V> task, boolean executeInParallel);
+	void inputFailed(AutomaticTaskOwner<V> task, ExecutionMode mode);
 
 	/**
 	 * Called by implementing classes as a default implementation of <code>addAutomaticInput</code> method.
@@ -73,14 +74,14 @@ public interface MultipleInputTask<V> extends AutomaticTask<V> {
 	 *            Source task.
 	 * @param input
 	 *            Input.
-	 * @param executeInParallel
-	 *            True to execute this task in parallel mode.
+	 * @param mode
+	 *            Execution mode.
 	 * @param inputList
 	 *            List of inputs to add the given input.
 	 * @param inputThreshold
 	 *            Input threshold.
 	 */
-	default void automaticInputAdded(AutomaticTaskOwner<V> task, V input, boolean executeInParallel, List<V> inputList, int inputThreshold) {
+	default void automaticInputAdded(AutomaticTaskOwner<V> task, V input, ExecutionMode mode, List<V> inputList, int inputThreshold) {
 
 		// synchronize on input list
 		synchronized (inputList) {
@@ -88,9 +89,13 @@ public interface MultipleInputTask<V> extends AutomaticTask<V> {
 			// add input
 			inputList.add(input);
 
+			// no run
+			if (mode.equals(ExecutionMode.NO_RUN))
+				return;
+
 			// input threshold reached
 			if (inputList.size() == inputThreshold) {
-				((InternalEquinoxTask<?>) task).getTaskPanel().getOwner().runTaskSilently((InternalEquinoxTask<?>) this, !executeInParallel);
+				((InternalEquinoxTask<?>) task).getTaskPanel().getOwner().runTaskSilently((InternalEquinoxTask<?>) this, mode.equals(ExecutionMode.SEQUENTIAL));
 			}
 		}
 	}
@@ -100,22 +105,26 @@ public interface MultipleInputTask<V> extends AutomaticTask<V> {
 	 *
 	 * @param task
 	 *            Source task.
-	 * @param executeInParallel
-	 *            True to execute this task in parallel mode.
+	 * @param mode
+	 *            Execution mode.
 	 * @param inputList
 	 *            List of inputs to add the given input.
 	 * @param inputThreshold
 	 *            Input threshold.
 	 * @return The updated input threshold.
 	 */
-	default int automaticInputFailed(AutomaticTaskOwner<V> task, boolean executeInParallel, List<V> inputList, int inputThreshold) {
+	default int automaticInputFailed(AutomaticTaskOwner<V> task, ExecutionMode mode, List<V> inputList, int inputThreshold) {
 
 		// decrement threshold
 		inputThreshold--;
 
+		// no run
+		if (mode.equals(ExecutionMode.NO_RUN))
+			return inputThreshold;
+
 		// input threshold reached
 		if (inputList.size() == inputThreshold && inputThreshold >= 2) {
-			((InternalEquinoxTask<?>) task).getTaskPanel().getOwner().runTaskSilently((InternalEquinoxTask<?>) this, !executeInParallel);
+			((InternalEquinoxTask<?>) task).getTaskPanel().getOwner().runTaskSilently((InternalEquinoxTask<?>) this, mode.equals(ExecutionMode.SEQUENTIAL));
 		}
 
 		// return input threshold

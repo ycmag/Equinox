@@ -24,10 +24,10 @@ import java.util.concurrent.ExecutionException;
 import equinox.Equinox;
 import equinox.controller.FileViewPanel;
 import equinox.controller.InputPanel;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.ExternalFlight;
 import equinox.data.fileType.ExternalStressSequence;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -50,10 +50,7 @@ public class SelectExternalFlight extends InternalEquinoxTask<ExternalFlight> im
 	private final int criteria_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<ExternalFlight>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<ExternalFlight>> automaticTasks_ = null;
 
 	/**
 	 * Creates select external flight task.
@@ -74,12 +71,7 @@ public class SelectExternalFlight extends InternalEquinoxTask<ExternalFlight> im
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<ExternalFlight> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<ExternalFlight> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -87,7 +79,7 @@ public class SelectExternalFlight extends InternalEquinoxTask<ExternalFlight> im
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<ExternalFlight>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<ExternalFlight>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -167,7 +159,7 @@ public class SelectExternalFlight extends InternalEquinoxTask<ExternalFlight> im
 
 			// automatic task
 			else {
-				automaticTaskOwnerSucceeded(flight, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(flight, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -184,7 +176,7 @@ public class SelectExternalFlight extends InternalEquinoxTask<ExternalFlight> im
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -194,7 +186,7 @@ public class SelectExternalFlight extends InternalEquinoxTask<ExternalFlight> im
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

@@ -36,10 +36,10 @@ import org.jfree.ui.RectangleInsets;
 import org.jfree.util.SortOrder;
 
 import equinox.controller.DamageContributionViewPanel;
+import equinox.data.EmbeddedTask;
 import equinox.data.Pair;
 import equinox.data.StatisticsPlotAttributes;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -62,10 +62,7 @@ public class SaveCategoryDataset extends InternalEquinoxTask<Path> implements Sh
 	private final Path output;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates save category dataset task.
@@ -87,12 +84,7 @@ public class SaveCategoryDataset extends InternalEquinoxTask<Path> implements Sh
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -100,7 +92,7 @@ public class SaveCategoryDataset extends InternalEquinoxTask<Path> implements Sh
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -222,7 +214,7 @@ public class SaveCategoryDataset extends InternalEquinoxTask<Path> implements Sh
 			Path file = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -238,7 +230,7 @@ public class SaveCategoryDataset extends InternalEquinoxTask<Path> implements Sh
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -248,6 +240,6 @@ public class SaveCategoryDataset extends InternalEquinoxTask<Path> implements Sh
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 }

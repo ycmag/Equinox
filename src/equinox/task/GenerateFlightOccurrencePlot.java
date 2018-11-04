@@ -42,13 +42,13 @@ import org.jfree.ui.RectangleInsets;
 
 import equinox.Equinox;
 import equinox.controller.DamageContributionViewPanel;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.STFFile;
 import equinox.data.fileType.Spectrum;
 import equinox.data.fileType.SpectrumItem;
 import equinox.plugin.FileType;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -71,10 +71,7 @@ public class GenerateFlightOccurrencePlot extends TemporaryFileCreatingTask<Path
 	private final Path output_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates generate typical flight occurrence plot task.
@@ -98,12 +95,7 @@ public class GenerateFlightOccurrencePlot extends TemporaryFileCreatingTask<Path
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -111,7 +103,7 @@ public class GenerateFlightOccurrencePlot extends TemporaryFileCreatingTask<Path
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -211,7 +203,7 @@ public class GenerateFlightOccurrencePlot extends TemporaryFileCreatingTask<Path
 			Path output = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(output, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -227,7 +219,7 @@ public class GenerateFlightOccurrencePlot extends TemporaryFileCreatingTask<Path
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -237,7 +229,7 @@ public class GenerateFlightOccurrencePlot extends TemporaryFileCreatingTask<Path
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

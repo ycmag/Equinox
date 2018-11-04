@@ -21,6 +21,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import equinox.data.EmbeddedTask;
 import equinox.data.Pair;
 import equinox.dataServer.remote.data.SpectrumInfo;
 import equinox.dataServer.remote.data.SpectrumInfo.SpectrumInfoType;
@@ -28,7 +29,6 @@ import equinox.plugin.FileType;
 import equinox.serverUtilities.FilerConnection;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.utility.Utility;
@@ -51,11 +51,8 @@ public class DownloadSpectrum extends TemporaryFileCreatingTask<AddSpectrum> imp
 	/** True if the downloaded spectrum should be added to local database. */
 	private final boolean addToDatabase_;
 
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
-
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Pair<Path, SpectrumInfo>>> automaticTasks_ = null;
+	private HashMap<String, EmbeddedTask<Pair<Path, SpectrumInfo>>> automaticTasks_ = null;
 
 	/**
 	 * Creates download spectrum task.
@@ -89,12 +86,7 @@ public class DownloadSpectrum extends TemporaryFileCreatingTask<AddSpectrum> imp
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Pair<Path, SpectrumInfo>> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Pair<Path, SpectrumInfo>> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -102,7 +94,7 @@ public class DownloadSpectrum extends TemporaryFileCreatingTask<AddSpectrum> imp
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Pair<Path, SpectrumInfo>>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Pair<Path, SpectrumInfo>>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -201,7 +193,7 @@ public class DownloadSpectrum extends TemporaryFileCreatingTask<AddSpectrum> imp
 			}
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(new Pair<>(output_, info_), automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(new Pair<>(output_, info_), automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -217,7 +209,7 @@ public class DownloadSpectrum extends TemporaryFileCreatingTask<AddSpectrum> imp
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -227,7 +219,7 @@ public class DownloadSpectrum extends TemporaryFileCreatingTask<AddSpectrum> imp
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

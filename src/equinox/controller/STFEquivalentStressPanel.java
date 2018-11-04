@@ -36,7 +36,9 @@ import equinox.controller.ScheduleTaskPanel.SchedulingPanel;
 import equinox.controller.SegmentFactorsPopup.SegmentFactorAddingPanel;
 import equinox.data.AnalysisEngine;
 import equinox.data.DTInterpolation;
+import equinox.data.EmbeddedTask;
 import equinox.data.EquinoxTheme;
+import equinox.data.ExecutionMode;
 import equinox.data.IsamiSubVersion;
 import equinox.data.IsamiVersion;
 import equinox.data.LoadcaseFactor;
@@ -668,7 +670,7 @@ public class STFEquivalentStressPanel implements InternalInputSubPanel, DeltaPIn
 			// add automatic tasks
 			for (EquivalentStressInput input : equivalentStressAnalysisInputs) {
 				EquivalentStressAnalysis analysis = new EquivalentStressAnalysis(null, input, engine).setIsamiEngineInputs(isamiVersion, isamiSubVersion, applyCompression);
-				task.addAutomaticTask(Integer.toString(analysis.hashCode()), analysis);
+				task.addAutomaticTask(Integer.toString(analysis.hashCode()), new EmbeddedTask<>(analysis, ExecutionMode.PARALLEL));
 			}
 
 			// run now

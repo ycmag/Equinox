@@ -25,11 +25,11 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
 import equinox.data.Triple;
 import equinox.data.fileType.STFFile;
 import equinox.dataServer.remote.data.PilotPointImageType;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import javafx.scene.image.Image;
@@ -47,10 +47,7 @@ public class GetSTFInfo3 extends InternalEquinoxTask<Triple<STFFile, String[], H
 	private STFFile stfFile;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Triple<STFFile, String[], HashMap<PilotPointImageType, Image>>>> automaticTasks = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel = true;
+	private HashMap<String, EmbeddedTask<Triple<STFFile, String[], HashMap<PilotPointImageType, Image>>>> automaticTasks = null;
 
 	/**
 	 * Creates get STF info task.
@@ -73,12 +70,7 @@ public class GetSTFInfo3 extends InternalEquinoxTask<Triple<STFFile, String[], H
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Triple<STFFile, String[], HashMap<PilotPointImageType, Image>>> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Triple<STFFile, String[], HashMap<PilotPointImageType, Image>>> task) {
 		if (automaticTasks == null) {
 			automaticTasks = new HashMap<>();
 		}
@@ -86,7 +78,7 @@ public class GetSTFInfo3 extends InternalEquinoxTask<Triple<STFFile, String[], H
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Triple<STFFile, String[], HashMap<PilotPointImageType, Image>>>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Triple<STFFile, String[], HashMap<PilotPointImageType, Image>>>> getAutomaticTasks() {
 		return automaticTasks;
 	}
 
@@ -135,7 +127,7 @@ public class GetSTFInfo3 extends InternalEquinoxTask<Triple<STFFile, String[], H
 			Triple<STFFile, String[], HashMap<PilotPointImageType, Image>> results = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(results, automaticTasks, taskPanel_, executeAutomaticTasksInParallel);
+			automaticTaskOwnerSucceeded(results, automaticTasks, taskPanel_);
 		}
 
 		// exception occurred
@@ -151,7 +143,7 @@ public class GetSTFInfo3 extends InternalEquinoxTask<Triple<STFFile, String[], H
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks, executeAutomaticTasksInParallel);
+		automaticTaskOwnerFailed(automaticTasks);
 	}
 
 	@Override
@@ -161,7 +153,7 @@ public class GetSTFInfo3 extends InternalEquinoxTask<Triple<STFFile, String[], H
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks, executeAutomaticTasksInParallel);
+		automaticTaskOwnerFailed(automaticTasks);
 	}
 
 	/**

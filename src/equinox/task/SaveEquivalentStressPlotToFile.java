@@ -28,10 +28,10 @@ import java.util.concurrent.ExecutionException;
 import javax.imageio.ImageIO;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.SpectrumItem;
 import equinox.dataServer.remote.data.PilotPointImageType;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.PostProcessingTask;
 import equinox.task.automation.SingleInputTask;
@@ -57,10 +57,7 @@ public class SaveEquivalentStressPlotToFile extends InternalEquinoxTask<Path> im
 	private final PilotPointImageType plotType;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Path>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Path>> automaticTasks_ = null;
 
 	/**
 	 * Creates save equivalent stress plot to file task.
@@ -79,12 +76,7 @@ public class SaveEquivalentStressPlotToFile extends InternalEquinoxTask<Path> im
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Path> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Path> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -92,7 +84,7 @@ public class SaveEquivalentStressPlotToFile extends InternalEquinoxTask<Path> im
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Path>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Path>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -133,7 +125,7 @@ public class SaveEquivalentStressPlotToFile extends InternalEquinoxTask<Path> im
 			Path file = get();
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(file, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -149,7 +141,7 @@ public class SaveEquivalentStressPlotToFile extends InternalEquinoxTask<Path> im
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -159,7 +151,7 @@ public class SaveEquivalentStressPlotToFile extends InternalEquinoxTask<Path> im
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

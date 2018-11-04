@@ -40,6 +40,7 @@ import equinox.data.DTInterpolation;
 import equinox.data.DTInterpolator;
 import equinox.data.DamageContribution;
 import equinox.data.DamageContributionResult;
+import equinox.data.EmbeddedTask;
 import equinox.data.GAGEvent;
 import equinox.data.GAGPeak;
 import equinox.data.IncStress;
@@ -61,7 +62,6 @@ import equinox.process.InbuiltDCA;
 import equinox.process.SafeDCA;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.task.serializableTask.SerializableLoadcaseDamageContributionAnalysis;
@@ -122,10 +122,7 @@ public class LoadcaseDamageContributionAnalysis extends TemporaryFileCreatingTas
 	private ArrayList<GAGEvent> gagEvents_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<LoadcaseDamageContributions>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<LoadcaseDamageContributions>> automaticTasks_ = null;
 
 	/**
 	 * Creates loadcase damage contribution analysis task.
@@ -179,12 +176,7 @@ public class LoadcaseDamageContributionAnalysis extends TemporaryFileCreatingTas
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<LoadcaseDamageContributions> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<LoadcaseDamageContributions> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -192,7 +184,7 @@ public class LoadcaseDamageContributionAnalysis extends TemporaryFileCreatingTas
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<LoadcaseDamageContributions>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<LoadcaseDamageContributions>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -315,7 +307,7 @@ public class LoadcaseDamageContributionAnalysis extends TemporaryFileCreatingTas
 				taskPanel_.getOwner().runTaskInParallel(new SaveLoadcaseDamageContributionPlot(contributions, true, null));
 
 				// manage automatic tasks
-				automaticTaskOwnerSucceeded(contributions, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(contributions, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -337,7 +329,7 @@ public class LoadcaseDamageContributionAnalysis extends TemporaryFileCreatingTas
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -352,7 +344,7 @@ public class LoadcaseDamageContributionAnalysis extends TemporaryFileCreatingTas
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

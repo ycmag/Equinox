@@ -35,6 +35,7 @@ import java.util.concurrent.ExecutionException;
 import equinox.Equinox;
 import equinox.controller.ActiveTasksPanel;
 import equinox.data.AnalysisEngine;
+import equinox.data.EmbeddedTask;
 import equinox.data.IsamiSubVersion;
 import equinox.data.IsamiVersion;
 import equinox.data.Settings;
@@ -50,7 +51,6 @@ import equinox.process.FastGenerateSth;
 import equinox.serverUtilities.Permission;
 import equinox.serverUtilities.ServerUtility;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.task.serializableTask.SerializableFastGenerateStressSequence;
@@ -102,10 +102,7 @@ public class FastGenerateStressSequence extends TemporaryFileCreatingTask<ArrayL
 	private boolean applyCompression_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<SpectrumItem>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<SpectrumItem>> automaticTasks_ = null;
 
 	/**
 	 * Creates fast generate stress sequence task.
@@ -189,12 +186,7 @@ public class FastGenerateStressSequence extends TemporaryFileCreatingTask<ArrayL
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<SpectrumItem> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<SpectrumItem> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -202,7 +194,7 @@ public class FastGenerateStressSequence extends TemporaryFileCreatingTask<ArrayL
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<SpectrumItem>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<SpectrumItem>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -294,16 +286,15 @@ public class FastGenerateStressSequence extends TemporaryFileCreatingTask<ArrayL
 
 				// add automatic tasks
 				if (automaticTasks_ != null) {
-					Iterator<Entry<String, AutomaticTask<SpectrumItem>>> iterator = automaticTasks_.entrySet().iterator();
+					Iterator<Entry<String, EmbeddedTask<SpectrumItem>>> iterator = automaticTasks_.entrySet().iterator();
 					while (iterator.hasNext()) {
-						Entry<String, AutomaticTask<SpectrumItem>> entry = iterator.next();
+						Entry<String, EmbeddedTask<SpectrumItem>> entry = iterator.next();
 						task.addAutomaticTask(entry.getKey(), entry.getValue());
-						task.setAutomaticTaskExecutionMode(executeAutomaticTasksInParallel_);
 					}
 				}
 
 				// run task
-				tm.runTaskSilently(task, !executeAutomaticTasksInParallel_);
+				tm.runTaskSilently(task, false);
 			}
 		}
 
@@ -325,7 +316,7 @@ public class FastGenerateStressSequence extends TemporaryFileCreatingTask<ArrayL
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -340,7 +331,7 @@ public class FastGenerateStressSequence extends TemporaryFileCreatingTask<ArrayL
 		}
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

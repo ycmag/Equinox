@@ -33,15 +33,16 @@ import equinox.Equinox;
 import equinox.controller.ExternalPlotViewPanel;
 import equinox.controller.InputPanel;
 import equinox.controller.ViewPanel;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.data.SeriesKey;
 import equinox.data.fileType.ExternalFlight;
 import equinox.data.fileType.ExternalStressSequence;
 import equinox.data.input.ExternalFlightPlotInput;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.MultipleInputTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
+import equinox.task.automation.MultipleInputTask;
 
 /**
  * Class for plot external typical flights task.
@@ -62,10 +63,7 @@ public class PlotExternalTypicalFlights extends InternalEquinoxTask<XYDataset> i
 	private volatile int inputThreshold_ = 0;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<XYDataset>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<XYDataset>> automaticTasks_ = null;
 
 	/**
 	 * Creates plot STH flights task.
@@ -94,22 +92,17 @@ public class PlotExternalTypicalFlights extends InternalEquinoxTask<XYDataset> i
 	}
 
 	@Override
-	synchronized public void addAutomaticInput(AutomaticTaskOwner<ExternalFlight> task, ExternalFlight input, boolean executeInParallel) {
-		automaticInputAdded(task, input, executeInParallel, flights_, inputThreshold_);
+	synchronized public void addAutomaticInput(AutomaticTaskOwner<ExternalFlight> task, ExternalFlight input, ExecutionMode mode) {
+		automaticInputAdded(task, input, mode, flights_, inputThreshold_);
 	}
 
 	@Override
-	synchronized public void inputFailed(AutomaticTaskOwner<ExternalFlight> task, boolean executeInParallel) {
-		inputThreshold_ = automaticInputFailed(task, executeInParallel, flights_, inputThreshold_);
+	synchronized public void inputFailed(AutomaticTaskOwner<ExternalFlight> task, ExecutionMode mode) {
+		inputThreshold_ = automaticInputFailed(task, mode, flights_, inputThreshold_);
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<XYDataset> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<XYDataset> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -117,7 +110,7 @@ public class PlotExternalTypicalFlights extends InternalEquinoxTask<XYDataset> i
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<XYDataset>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<XYDataset>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -182,7 +175,7 @@ public class PlotExternalTypicalFlights extends InternalEquinoxTask<XYDataset> i
 
 			// automatic task
 			else {
-				automaticTaskOwnerSucceeded(dataset, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(dataset, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -199,7 +192,7 @@ public class PlotExternalTypicalFlights extends InternalEquinoxTask<XYDataset> i
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -209,7 +202,7 @@ public class PlotExternalTypicalFlights extends InternalEquinoxTask<XYDataset> i
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

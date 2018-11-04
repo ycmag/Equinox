@@ -5,7 +5,7 @@
 	
 	<!--Instruction settings. This element is optional, if not supplied, default settings will be used. Note that, the following are only instruction settings; all other settings can be set from within the Data Analyst UI.-->
 	<settings>
-		<!--Run mode can either 'parallel' (default) or 'sequential'.-->
+		<!--Run mode can be either 'parallel' (default) or 'sequential'.-->
 		<runMode></runMode>
 		<!--This can be either 'true' (default) or 'false'. If overwriteFiles is set to true, output files will overwrite existing files (if any). If set to false and output file exists, instructions will not run. -->
 		<overwriteFiles></overwriteFiles>
@@ -119,6 +119,8 @@
 		<id></id>
 		<!--The spectrumId refers to 'addSpectrum' instruction.-->
 		<spectrumId></spectrumId>
+		<!--The previousInstructionId refers to the instruction which will be executed prior to this instruction. This element is optional, if not given, this instruction will be executed after its input supplying instruction completes.-->
+		<previousInstructionId></previousInstructionId>
 		<!--Recipient username. Note that, the recipient must be online at the time of execution.-->
 		<recipient></recipient>
 	</shareSpectrum>
@@ -128,6 +130,8 @@
 		<id></id>
 		<!--The spectrumId refers to 'addSpectrum' instruction.-->
 		<spectrumId></spectrumId>
+		<!--The previousInstructionId refers to the instruction which will be executed prior to this instruction. This element is optional, if not given, this instruction will be executed after its input supplying instruction completes.-->
+		<previousInstructionId></previousInstructionId>
 		<!--Type of CDF set file to share. This cane be one of 'ana', 'cvt', 'txt', 'fls' or 'xls'.-->
 		<fileType></fileType>
 		<!--Recipient username. Note that, the recipient must be online at the time of execution.-->
@@ -139,6 +143,8 @@
 		<id></id>
 		<!--The spectrumId refers to 'addSpectrum' instruction.-->
 		<spectrumId></spectrumId>
+		<!--The previousInstructionId refers to the instruction which will be executed prior to this instruction. This element is optional, if not given, this instruction will be executed after its input supplying instruction completes.-->
+		<previousInstructionId></previousInstructionId>
 		<!--Delivery reference. This element is optional. If not supplied, DRAFT will be set.-->
 		<deliveryReference></deliveryReference>
 		<!--Spectrum description. This element is optional.-->
@@ -291,6 +297,8 @@
 		<id></id>
 		<!--The stfId refers to 'addStf' instruction.-->
 		<stfId></stfId>
+		<!--The previousInstructionId refers to the instruction which will be executed prior to this instruction. This element is optional, if not given, this instruction will be executed after its input supplying instruction completes.-->
+		<previousInstructionId></previousInstructionId>
 		<!--Pilot point attribute. Multiple pilotPointInfo elements can be given for various pilot point attributes. This element is optional.-->
 		<pilotPointInfo>
 			<!--Pilot point attribute name. This can be one of 'fatigueMission', 'description', 'dataSource', 'generationSource', 'deliveryReference', 'issue', 'eid', 'elementType', 'framePosition', 'stringerPosition', 'fatigueMaterial', 'preffasMaterial' or 'linearMaterial'.-->

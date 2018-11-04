@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import equinox.controller.DownloadViewPanel;
 import equinox.controller.ViewPanel;
+import equinox.data.EmbeddedTask;
 import equinox.dataServer.remote.data.BasicSearchInput;
 import equinox.dataServer.remote.data.DownloadInfo;
 import equinox.dataServer.remote.data.PilotPointInfo;
@@ -34,7 +35,6 @@ import equinox.dataServer.remote.message.DatabaseQueryPermissionDenied;
 import equinox.network.DataServerManager;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.utility.exception.PermissionDeniedException;
 import equinox.utility.exception.ServerDatabaseQueryFailedException;
@@ -61,10 +61,7 @@ public class BasicPilotPointSearch extends InternalEquinoxTask<ArrayList<Downloa
 	private final AtomicReference<DataMessage> serverMessageRef;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<PilotPointInfo>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<PilotPointInfo>> automaticTasks_ = null;
 
 	/**
 	 * Creates basic pilot point search task.
@@ -94,12 +91,7 @@ public class BasicPilotPointSearch extends InternalEquinoxTask<ArrayList<Downloa
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<PilotPointInfo> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<PilotPointInfo> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -107,7 +99,7 @@ public class BasicPilotPointSearch extends InternalEquinoxTask<ArrayList<Downloa
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<PilotPointInfo>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<PilotPointInfo>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -216,7 +208,7 @@ public class BasicPilotPointSearch extends InternalEquinoxTask<ArrayList<Downloa
 				PilotPointInfo firstResult = (PilotPointInfo) results.get(0);
 
 				// manage automatic tasks
-				automaticTaskOwnerSucceeded(firstResult, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(firstResult, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -233,7 +225,7 @@ public class BasicPilotPointSearch extends InternalEquinoxTask<ArrayList<Downloa
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -243,6 +235,6 @@ public class BasicPilotPointSearch extends InternalEquinoxTask<ArrayList<Downloa
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 }

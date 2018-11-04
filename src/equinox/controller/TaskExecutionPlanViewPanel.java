@@ -34,7 +34,9 @@ import edu.uci.ics.jung.visualization.VisualizationViewer;
 import edu.uci.ics.jung.visualization.control.DefaultModalGraphMouse;
 import edu.uci.ics.jung.visualization.control.ModalGraphMouse;
 import equinox.controller.ViewPanel.InternalViewSubPanel;
+import equinox.data.EmbeddedTask;
 import equinox.data.EquinoxTheme;
+import equinox.data.ExecutionMode;
 import equinox.data.InstructedTask;
 import equinox.plugin.FileType;
 import equinox.task.InternalEquinoxTask;
@@ -241,25 +243,29 @@ public class TaskExecutionPlanViewPanel implements InternalViewSubPanel {
 			return;
 
 		// loop over follower tasks
-		for (InternalEquinoxTask<?> task : sourceTask.getFollowerTasks()) {
+		Iterator<Entry<InternalEquinoxTask<?>, ExecutionMode>> iterator = sourceTask.getFollowerTasks().entrySet().iterator();
+		while (iterator.hasNext()) {
+
+			// get entry
+			Entry<InternalEquinoxTask<?>, ExecutionMode> entry = iterator.next();
 
 			// already in graph
-			if (graph.containsVertex(task)) {
+			if (graph.containsVertex(entry.getKey())) {
 				continue;
 			}
 
 			// add to graph
-			graph.addVertex(task);
-			graph.addEdge(edgeIndex, sourceTask, task);
+			graph.addVertex(entry.getKey());
+			graph.addEdge(edgeIndex, sourceTask, entry.getKey());
 			edgeIndex++;
 
 			// automatic task owner (add automatic tasks)
-			if (task instanceof AutomaticTaskOwner) {
-				addAutomaticTasksToGraph((AutomaticTaskOwner<?>) task, graph);
+			if (entry.getKey() instanceof AutomaticTaskOwner) {
+				addAutomaticTasksToGraph((AutomaticTaskOwner<?>) entry.getKey(), graph);
 			}
 
 			// add follower tasks (if any)
-			addFollowerTasksToGraph(task, graph);
+			addFollowerTasksToGraph(entry.getKey(), graph);
 		}
 	}
 
@@ -279,11 +285,11 @@ public class TaskExecutionPlanViewPanel implements InternalViewSubPanel {
 			return;
 
 		// loop over automatic tasks
-		Iterator<AutomaticTask> iterator = sourceTask.getAutomaticTasks().values().iterator();
+		Iterator<EmbeddedTask> iterator = sourceTask.getAutomaticTasks().values().iterator();
 		while (iterator.hasNext()) {
 
 			// get task
-			AutomaticTask task = iterator.next();
+			AutomaticTask task = iterator.next().getTask();
 
 			// already in graph
 			if (graph.containsVertex((InternalEquinoxTask<?>) task)) {

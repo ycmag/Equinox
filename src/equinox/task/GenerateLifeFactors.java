@@ -30,6 +30,8 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import equinox.Equinox;
 import equinox.controller.StatisticsViewPanel;
 import equinox.controller.ViewPanel;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.data.Pair;
 import equinox.data.StatisticsPlotAttributes;
 import equinox.data.fileType.ExternalFatigueEquivalentStress;
@@ -46,9 +48,8 @@ import equinox.data.fileType.SpectrumItem;
 import equinox.data.input.LifeFactorComparisonInput;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.MultipleInputTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
+import equinox.task.automation.MultipleInputTask;
 
 /**
  * Class for generate life factors task.
@@ -69,10 +70,7 @@ public class GenerateLifeFactors extends InternalEquinoxTask<CategoryDataset> im
 	private volatile int inputThreshold_ = 0;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Pair<CategoryDataset, StatisticsPlotAttributes>>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Pair<CategoryDataset, StatisticsPlotAttributes>>> automaticTasks_ = null;
 
 	/**
 	 * Creates generate life factors task.
@@ -101,22 +99,17 @@ public class GenerateLifeFactors extends InternalEquinoxTask<CategoryDataset> im
 	}
 
 	@Override
-	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, boolean executeInParallel) {
-		automaticInputAdded(task, input, executeInParallel, stresses_, inputThreshold_);
+	synchronized public void addAutomaticInput(AutomaticTaskOwner<SpectrumItem> task, SpectrumItem input, ExecutionMode mode) {
+		automaticInputAdded(task, input, mode, stresses_, inputThreshold_);
 	}
 
 	@Override
-	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, boolean executeInParallel) {
-		inputThreshold_ = automaticInputFailed(task, executeInParallel, stresses_, inputThreshold_);
+	synchronized public void inputFailed(AutomaticTaskOwner<SpectrumItem> task, ExecutionMode mode) {
+		inputThreshold_ = automaticInputFailed(task, mode, stresses_, inputThreshold_);
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Pair<CategoryDataset, StatisticsPlotAttributes>> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Pair<CategoryDataset, StatisticsPlotAttributes>> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -124,7 +117,7 @@ public class GenerateLifeFactors extends InternalEquinoxTask<CategoryDataset> im
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Pair<CategoryDataset, StatisticsPlotAttributes>>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Pair<CategoryDataset, StatisticsPlotAttributes>>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -201,7 +194,7 @@ public class GenerateLifeFactors extends InternalEquinoxTask<CategoryDataset> im
 				plotAttributes.setYAxisLabel(yAxisLabel);
 
 				// manage automatic tasks
-				automaticTaskOwnerSucceeded(new Pair<>(dataset, plotAttributes), automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(new Pair<>(dataset, plotAttributes), automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -218,7 +211,7 @@ public class GenerateLifeFactors extends InternalEquinoxTask<CategoryDataset> im
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -228,7 +221,7 @@ public class GenerateLifeFactors extends InternalEquinoxTask<CategoryDataset> im
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

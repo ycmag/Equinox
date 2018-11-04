@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
 import equinox.data.ConversionTableSheetName;
+import equinox.data.EmbeddedTask;
 import equinox.data.Pair;
 import equinox.data.fileType.Spectrum;
 import equinox.dataServer.remote.data.SpectrumInfo;
@@ -42,7 +43,6 @@ import equinox.process.LoadFLSFile;
 import equinox.process.LoadTXTFile;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.LongRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 import equinox.task.serializableTask.SerializableAddSpectrum;
@@ -70,10 +70,7 @@ public class AddSpectrum extends TemporaryFileCreatingTask<Spectrum> implements 
 	private SpectrumInfo info_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Spectrum>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Spectrum>> automaticTasks_ = null;
 
 	/** Add STF files task. */
 	private AddSTFFiles addSTFFiles_ = null;
@@ -188,12 +185,7 @@ public class AddSpectrum extends TemporaryFileCreatingTask<Spectrum> implements 
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Spectrum> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Spectrum> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -201,7 +193,7 @@ public class AddSpectrum extends TemporaryFileCreatingTask<Spectrum> implements 
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Spectrum>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Spectrum>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -345,7 +337,7 @@ public class AddSpectrum extends TemporaryFileCreatingTask<Spectrum> implements 
 			}
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(spectrum, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(spectrum, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -361,7 +353,7 @@ public class AddSpectrum extends TemporaryFileCreatingTask<Spectrum> implements 
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -371,7 +363,7 @@ public class AddSpectrum extends TemporaryFileCreatingTask<Spectrum> implements 
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

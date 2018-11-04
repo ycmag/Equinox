@@ -21,9 +21,9 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.ExternalStressSequence;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -46,10 +46,7 @@ public class SaveStressSequenceInfo extends InternalEquinoxTask<ExternalStressSe
 	private final String[] info_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<ExternalStressSequence>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<ExternalStressSequence>> automaticTasks_ = null;
 
 	/**
 	 * Creates save stress sequence info task.
@@ -70,12 +67,7 @@ public class SaveStressSequenceInfo extends InternalEquinoxTask<ExternalStressSe
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<ExternalStressSequence> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<ExternalStressSequence> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -83,7 +75,7 @@ public class SaveStressSequenceInfo extends InternalEquinoxTask<ExternalStressSe
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<ExternalStressSequence>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<ExternalStressSequence>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -155,7 +147,7 @@ public class SaveStressSequenceInfo extends InternalEquinoxTask<ExternalStressSe
 
 			// manage automatic tasks
 			if (automaticTasks_ != null) {
-				automaticTaskOwnerSucceeded(sequence, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+				automaticTaskOwnerSucceeded(sequence, automaticTasks_, taskPanel_);
 			}
 		}
 
@@ -172,7 +164,7 @@ public class SaveStressSequenceInfo extends InternalEquinoxTask<ExternalStressSe
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -182,7 +174,7 @@ public class SaveStressSequenceInfo extends InternalEquinoxTask<ExternalStressSe
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

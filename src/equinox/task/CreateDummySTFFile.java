@@ -30,12 +30,12 @@ import java.util.concurrent.ExecutionException;
 import org.apache.commons.lang3.RandomUtils;
 
 import equinox.Equinox;
+import equinox.data.EmbeddedTask;
 import equinox.data.fileType.STFFile;
 import equinox.data.fileType.Spectrum;
 import equinox.plugin.FileType;
 import equinox.process.LoadSTFFile;
 import equinox.serverUtilities.Permission;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -64,10 +64,7 @@ public class CreateDummySTFFile extends TemporaryFileCreatingTask<STFFile> imple
 	private String dpLC_ = null, dtInfLC_ = null, dtSupLC_ = null;
 
 	/** Automatic tasks. The key is the STF file name and the value is the task. */
-	private HashMap<String, AutomaticTask<STFFile>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<STFFile>> automaticTasks_ = null;
 
 	/**
 	 * Creates dummy STF file task.
@@ -86,12 +83,7 @@ public class CreateDummySTFFile extends TemporaryFileCreatingTask<STFFile> imple
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<STFFile> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<STFFile> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -99,7 +91,7 @@ public class CreateDummySTFFile extends TemporaryFileCreatingTask<STFFile> imple
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<STFFile>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<STFFile>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -294,7 +286,7 @@ public class CreateDummySTFFile extends TemporaryFileCreatingTask<STFFile> imple
 			spectrum_.getChildren().add(stfFile);
 
 			// manage automatic tasks
-			automaticTaskOwnerSucceeded(stfFile, automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+			automaticTaskOwnerSucceeded(stfFile, automaticTasks_, taskPanel_);
 		}
 
 		// exception occurred
@@ -310,7 +302,7 @@ public class CreateDummySTFFile extends TemporaryFileCreatingTask<STFFile> imple
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -320,7 +312,7 @@ public class CreateDummySTFFile extends TemporaryFileCreatingTask<STFFile> imple
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	/**

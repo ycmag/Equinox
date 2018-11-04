@@ -28,6 +28,7 @@ import org.jdom2.Element;
 import org.jdom2.input.SAXBuilder;
 
 import equinox.Equinox;
+import equinox.data.ExecutionMode;
 import equinox.data.IsamiVersion;
 import equinox.data.Settings;
 import equinox.data.input.ExternalStressSequenceComparisonInput.ExternalComparisonCriteria;
@@ -3124,6 +3125,12 @@ public class CheckInstructionSet extends TemporaryFileCreatingTask<Boolean> impl
 			if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, exportStf, "stfId", "addStf"))
 				return false;
 
+			// check previous instruction id
+			if (exportStf.getChild("previousInstructionId") != null) {
+				if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, exportStf, "previousInstructionId", null))
+					return false;
+			}
+
 			// check output path
 			if (!XMLUtilities.checkOutputPathValue(this, inputFile, exportStf, "outputPath", false, overwriteFiles, FileType.ZIP))
 				return false;
@@ -3608,6 +3615,12 @@ public class CheckInstructionSet extends TemporaryFileCreatingTask<Boolean> impl
 			if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, exportSpectrum, "spectrumId", "addSpectrum"))
 				return false;
 
+			// check previous instruction id
+			if (exportSpectrum.getChild("previousInstructionId") != null) {
+				if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, exportSpectrum, "previousInstructionId", null))
+					return false;
+			}
+
 			// check delivery reference
 			if (!XMLUtilities.checkStringValue(this, inputFile, exportSpectrum, "deliveryReference", true))
 				return false;
@@ -3650,6 +3663,12 @@ public class CheckInstructionSet extends TemporaryFileCreatingTask<Boolean> impl
 			if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, shareSpectrum, "spectrumId", "addSpectrum"))
 				return false;
 
+			// check previous instruction id
+			if (shareSpectrum.getChild("previousInstructionId") != null) {
+				if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, shareSpectrum, "previousInstructionId", null))
+					return false;
+			}
+
 			// check file type
 			if (!XMLUtilities.checkStringValue(this, inputFile, shareSpectrum, "fileType", false, "ana", "cvt", "txt", "xls", "fls"))
 				return false;
@@ -3687,6 +3706,12 @@ public class CheckInstructionSet extends TemporaryFileCreatingTask<Boolean> impl
 			// check spectrum id
 			if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, shareSpectrum, "spectrumId", "addSpectrum"))
 				return false;
+
+			// check previous instruction id
+			if (shareSpectrum.getChild("previousInstructionId") != null) {
+				if (!XMLUtilities.checkDependency(this, inputFile, equinoxInput, shareSpectrum, "previousInstructionId", null))
+					return false;
+			}
 
 			// check recipient
 			if (!XMLUtilities.checkRecipient(this, inputFile, shareSpectrum, "recipient", false))
@@ -3865,7 +3890,7 @@ public class CheckInstructionSet extends TemporaryFileCreatingTask<Boolean> impl
 		}
 
 		// check run mode
-		if (!XMLUtilities.checkStringValue(this, inputFile, settings, "runMode", true, RunInstructionSet.PARALLEL, RunInstructionSet.SEQUENTIAL))
+		if (!XMLUtilities.checkStringValue(this, inputFile, settings, "runMode", true, ExecutionMode.PARALLEL.toString().toLowerCase(), ExecutionMode.SEQUENTIAL.toString().toLowerCase()))
 			return false;
 
 		// check overwrite files

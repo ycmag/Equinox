@@ -28,13 +28,13 @@ import equinox.controller.MissionProfileComparisonViewPanel;
 import equinox.controller.MissionProfilePanel;
 import equinox.controller.MissionProfileViewPanel;
 import equinox.controller.ViewPanel;
+import equinox.data.EmbeddedTask;
 import equinox.data.MissionProfileComparisonPlotAttributes;
 import equinox.data.Pair;
 import equinox.data.fileType.StressSequence;
 import equinox.process.PlotMissionProfileProcess;
 import equinox.serverUtilities.Permission;
 import equinox.task.InternalEquinoxTask.ShortRunningTask;
-import equinox.task.automation.AutomaticTask;
 import equinox.task.automation.AutomaticTaskOwner;
 import equinox.task.automation.SingleInputTask;
 
@@ -63,10 +63,7 @@ public class PlotMissionProfile extends InternalEquinoxTask<XYDataset[]> impleme
 	private final boolean isComparison_;
 
 	/** Automatic tasks. */
-	private HashMap<String, AutomaticTask<Pair<XYDataset[], MissionProfileComparisonPlotAttributes>>> automaticTasks_ = null;
-
-	/** Automatic task execution mode. */
-	private boolean executeAutomaticTasksInParallel_ = true;
+	private HashMap<String, EmbeddedTask<Pair<XYDataset[], MissionProfileComparisonPlotAttributes>>> automaticTasks_ = null;
 
 	/**
 	 * Creates plot mission profile task.
@@ -101,12 +98,7 @@ public class PlotMissionProfile extends InternalEquinoxTask<XYDataset[]> impleme
 	}
 
 	@Override
-	public void setAutomaticTaskExecutionMode(boolean isParallel) {
-		executeAutomaticTasksInParallel_ = isParallel;
-	}
-
-	@Override
-	public void addAutomaticTask(String taskID, AutomaticTask<Pair<XYDataset[], MissionProfileComparisonPlotAttributes>> task) {
+	public void addAutomaticTask(String taskID, EmbeddedTask<Pair<XYDataset[], MissionProfileComparisonPlotAttributes>> task) {
 		if (automaticTasks_ == null) {
 			automaticTasks_ = new HashMap<>();
 		}
@@ -114,7 +106,7 @@ public class PlotMissionProfile extends InternalEquinoxTask<XYDataset[]> impleme
 	}
 
 	@Override
-	public HashMap<String, AutomaticTask<Pair<XYDataset[], MissionProfileComparisonPlotAttributes>>> getAutomaticTasks() {
+	public HashMap<String, EmbeddedTask<Pair<XYDataset[], MissionProfileComparisonPlotAttributes>>> getAutomaticTasks() {
 		return automaticTasks_;
 	}
 
@@ -214,7 +206,7 @@ public class PlotMissionProfile extends InternalEquinoxTask<XYDataset[]> impleme
 					MissionProfileComparisonPlotAttributes attributes = new MissionProfileComparisonPlotAttributes(maxDiff, title);
 
 					// manage automatic tasks
-					automaticTaskOwnerSucceeded(new Pair<>(datasets, attributes), automaticTasks_, taskPanel_, executeAutomaticTasksInParallel_);
+					automaticTaskOwnerSucceeded(new Pair<>(datasets, attributes), automaticTasks_, taskPanel_);
 				}
 			}
 		}
@@ -232,7 +224,7 @@ public class PlotMissionProfile extends InternalEquinoxTask<XYDataset[]> impleme
 		super.failed();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 
 	@Override
@@ -242,6 +234,6 @@ public class PlotMissionProfile extends InternalEquinoxTask<XYDataset[]> impleme
 		super.cancelled();
 
 		// manage automatic tasks
-		automaticTaskOwnerFailed(automaticTasks_, executeAutomaticTasksInParallel_);
+		automaticTaskOwnerFailed(automaticTasks_);
 	}
 }

@@ -40,6 +40,8 @@ import equinox.controller.SearchEngineSettingsPanel;
 import equinox.controller.TaskExecutionPlanViewPanel;
 import equinox.controller.ViewPanel;
 import equinox.data.AnalysisEngine;
+import equinox.data.EmbeddedTask;
+import equinox.data.ExecutionMode;
 import equinox.data.InstructedTask;
 import equinox.data.IsamiSubVersion;
 import equinox.data.IsamiVersion;
@@ -204,11 +206,8 @@ import javafx.scene.image.Image;
 @SuppressWarnings("unchecked")
 public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String, InstructedTask>> implements LongRunningTask, ChangeListener<State>, AutomationTask {
 
-	/** Run mode constant. */
-	public static final String PARALLEL = "parallel", SEQUENTIAL = "sequential";
-
-	/** True if tasks should be executed in parallel mode. */
-	private String runMode = PARALLEL;
+	/** Run mode. */
+	private ExecutionMode runMode = ExecutionMode.PARALLEL;
 
 	/** Log level. */
 	private Level logLevel;
@@ -347,26 +346,6 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			saveSpectrumFile(equinoxInput, tasks);
 		}
 
-		// share spectrum
-		if (equinoxInput.getChild("shareSpectrum") != null) {
-			shareSpectrum(equinoxInput, tasks);
-		}
-
-		// share spectrum file
-		if (equinoxInput.getChild("shareSpectrumFile") != null) {
-			shareSpectrumFile(equinoxInput, tasks);
-		}
-
-		// export spectrum
-		if (equinoxInput.getChild("exportSpectrum") != null) {
-			exportSpectrum(equinoxInput, tasks);
-		}
-
-		// upload spectrum
-		if (equinoxInput.getChild("uploadSpectrum") != null) {
-			uploadSpectrum(equinoxInput, tasks);
-		}
-
 		// download STF
 		if (equinoxInput.getChild("downloadStf") != null) {
 			downloadStf(equinoxInput, tasks);
@@ -395,16 +374,6 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 		// share STF
 		if (equinoxInput.getChild("shareStf") != null) {
 			shareStf(equinoxInput, tasks);
-		}
-
-		// export STF
-		if (equinoxInput.getChild("exportStf") != null) {
-			exportStf(equinoxInput, tasks);
-		}
-
-		// upload STF
-		if (equinoxInput.getChild("uploadStf") != null) {
-			uploadStf(equinoxInput, tasks);
 		}
 
 		// add headless stress sequence
@@ -582,6 +551,36 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			saveEquivalentStressRatios(equinoxInput, tasks);
 		}
 
+		// share spectrum
+		if (equinoxInput.getChild("shareSpectrum") != null) {
+			shareSpectrum(equinoxInput, tasks);
+		}
+
+		// share spectrum file
+		if (equinoxInput.getChild("shareSpectrumFile") != null) {
+			shareSpectrumFile(equinoxInput, tasks);
+		}
+
+		// export spectrum
+		if (equinoxInput.getChild("exportSpectrum") != null) {
+			exportSpectrum(equinoxInput, tasks);
+		}
+
+		// upload spectrum
+		if (equinoxInput.getChild("uploadSpectrum") != null) {
+			uploadSpectrum(equinoxInput, tasks);
+		}
+
+		// export STF
+		if (equinoxInput.getChild("exportStf") != null) {
+			exportStf(equinoxInput, tasks);
+		}
+
+		// upload STF
+		if (equinoxInput.getChild("uploadStf") != null) {
+			uploadStf(equinoxInput, tasks);
+		}
+
 		// send text message
 		if (equinoxInput.getChild("sendTextMessage") != null) {
 			sendTextMessage(equinoxInput, tasks);
@@ -670,7 +669,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 					}
 
 					// run task
-					taskPanel_.getOwner().runTaskSilently(task, runMode.equals(SEQUENTIAL));
+					taskPanel_.getOwner().runTaskSilently(task, runMode.equals(ExecutionMode.SEQUENTIAL));
 				}
 			}
 		}
@@ -726,11 +725,11 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			return;
 
 		// loop over automatic tasks
-		Iterator<AutomaticTask> iterator = sourceTask.getAutomaticTasks().values().iterator();
+		Iterator<EmbeddedTask> iterator = sourceTask.getAutomaticTasks().values().iterator();
 		while (iterator.hasNext()) {
 
 			// get task
-			AutomaticTask task = iterator.next();
+			AutomaticTask task = iterator.next().getTask();
 
 			// create logger
 			XMLUtilities.createLogger(logDirectory, (InternalEquinoxTask<?>) task, logLevel);
@@ -760,7 +759,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			return;
 
 		// loop over follower tasks
-		for (InternalEquinoxTask<?> task : sourceTask.getFollowerTasks()) {
+		for (InternalEquinoxTask<?> task : sourceTask.getFollowerTasks().keySet()) {
 
 			// create logger
 			XMLUtilities.createLogger(logDirectory, task, logLevel);
@@ -807,7 +806,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 		// get run mode (if given)
 		if (settings.getChild("runMode") != null) {
-			runMode = settings.getChild("runMode").getTextNormalize();
+			runMode = ExecutionMode.valueOf(settings.getChild("runMode").getTextNormalize().toUpperCase());
 		}
 	}
 
@@ -845,8 +844,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
-				parentTask.addFollowerTask(task);
-				parentTask.setFollowerTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addFollowerTask(task, runMode);
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -893,8 +891,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-			parentTask.addAutomaticTask(id, task);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(task, true));
@@ -946,8 +943,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<ExternalStressSequence> parentTask = (AutomaticTaskOwner<ExternalStressSequence>) tasks.get(headlessStressSequenceId).getTask();
-			parentTask.addAutomaticTask(id, task);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(task, true));
@@ -993,8 +989,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<ExternalStressSequence> parentTask = (AutomaticTaskOwner<ExternalStressSequence>) tasks.get(headlessStressSequenceId).getTask();
-			parentTask.addAutomaticTask(id, assignMissionParametersTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(assignMissionParametersTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(assignMissionParametersTask, true));
@@ -1128,8 +1123,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 			}
 
 			// put task to tasks
@@ -1264,8 +1258,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 			}
 
 			// put task to tasks
@@ -1342,8 +1335,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// create tasks
 			PlotDamageComparison plotTask = new PlotDamageComparison(input, contributionType);
 			SaveLoadcaseDamageContributionComparisonPlot saveTask = new SaveLoadcaseDamageContributionComparisonPlot(null, null, outputPath);
-			plotTask.addAutomaticTask(id, saveTask);
-			plotTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			plotTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 			// set input threshold
 			List<Element> loadcaseDamageContributionIds = plotLoadcaseDamageContributionComparison.getChildren("loadcaseDamageContributionId");
@@ -1357,8 +1349,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(loadcaseDamageContributionId).getTask();
-				parentTask.addAutomaticTask(id, plotTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(plotTask, runMode));
 			}
 
 			// put task to tasks
@@ -1404,8 +1395,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(loadcaseDamageContributionId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 			}
 
 			// put task to tasks
@@ -1506,8 +1496,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<DamageAngle> parentTask = (AutomaticTaskOwner<DamageAngle>) tasks.get(damageAngleId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 			}
 
 			// put task to tasks
@@ -1587,8 +1576,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// create tasks
 			GetFlightContributionNames getNamesTask = new GetFlightContributionNames(null, null);
 			SaveFlightDamageContributions saveTask = new SaveFlightDamageContributions(null, null, null, options, outputPath.toFile());
-			getNamesTask.addAutomaticTask(id, saveTask);
-			getNamesTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			getNamesTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 			// set input threshold
 			List<Element> typicalFlightDamageContributionIds = saveTypicalFlightDamageContributions.getChildren("typicalFlightDamageContributionId");
@@ -1602,8 +1590,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(typicalFlightDamageContributionId).getTask();
-				parentTask.addAutomaticTask(id, getNamesTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(getNamesTask, runMode));
 			}
 
 			// put task to tasks
@@ -1711,8 +1698,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// create tasks
 			GetContributionNames getNamesTask = new GetContributionNames(null, null);
 			SaveDamageContributions saveTask = new SaveDamageContributions(null, null, options, outputPath.toFile());
-			getNamesTask.addAutomaticTask(id, saveTask);
-			getNamesTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			getNamesTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 			// set input threshold
 			List<Element> loadcaseDamageContributionIds = saveLoadcaseDamageContributions.getChildren("loadcaseDamageContributionId");
@@ -1726,8 +1712,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(loadcaseDamageContributionId).getTask();
-				parentTask.addAutomaticTask(id, getNamesTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(getNamesTask, runMode));
 			}
 
 			// put task to tasks
@@ -1865,8 +1850,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 			}
 
 			// put task to tasks
@@ -1971,8 +1955,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveMissionParameterPlot saveTask = new SaveMissionParameterPlot(null, null, outputPath);
 				GenerateStressRatiosWithMissionParameters compareTask = new GenerateStressRatiosWithMissionParameters(input, null);
-				compareTask.addAutomaticTask(id, saveTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 				// set input threshold
 				List<Element> equivalentStressIds = plotEquivalentStressRatios.getChildren(referenceIdName);
@@ -1986,8 +1969,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2001,8 +1983,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveCategoryDataset saveDatasetTask = new SaveCategoryDataset(null, outputPath);
 				GenerateStressRatios compareTask = new GenerateStressRatios(input);
-				compareTask.addAutomaticTask(id, saveDatasetTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> equivalentStressIds = plotEquivalentStressRatios.getChildren(referenceIdName);
@@ -2016,8 +1997,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2124,8 +2104,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveMissionParameterPlot saveTask = new SaveMissionParameterPlot(null, null, outputPath);
 				GenerateLFsWithMissionParameters compareTask = new GenerateLFsWithMissionParameters(input, null);
-				compareTask.addAutomaticTask(id, saveTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 				// set input threshold
 				List<Element> equivalentStressIds = plotLifeFactors.getChildren(referenceIdName);
@@ -2139,8 +2118,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2154,8 +2132,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveCategoryDataset saveDatasetTask = new SaveCategoryDataset(null, outputPath);
 				GenerateLifeFactors compareTask = new GenerateLifeFactors(input);
-				compareTask.addAutomaticTask(id, saveDatasetTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> equivalentStressIds = plotLifeFactors.getChildren(referenceIdName);
@@ -2169,8 +2146,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2263,8 +2239,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveMissionParameterPlot saveTask = new SaveMissionParameterPlot(null, null, outputPath);
 				CompareEquivalentStressesWithMissionParameters compareTask = new CompareEquivalentStressesWithMissionParameters(input, null);
-				compareTask.addAutomaticTask(id, saveTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 				// set input threshold
 				List<Element> equivalentStressIds = plotEquivalentStressComparison.getChildren(referenceIdName);
@@ -2278,8 +2253,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2293,8 +2267,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveCategoryDataset saveDatasetTask = new SaveCategoryDataset(null, outputPath);
 				CompareEquivalentStresses compareTask = new CompareEquivalentStresses(input);
-				compareTask.addAutomaticTask(id, saveDatasetTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> equivalentStressIds = plotEquivalentStressComparison.getChildren(referenceIdName);
@@ -2308,8 +2281,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2399,8 +2371,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveChart saveTask = new SaveChart(null, outputPath);
 				CompareFlights compareTask = new CompareFlights(input);
-				compareTask.addAutomaticTask(id, saveTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 				// set input threshold
 				List<Element> typicalFlights = plotTypicalFlightComparison.getChildren("typicalFlight");
@@ -2415,13 +2386,11 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// create get flight task
 					GetTypicalFlight getFlightTask = new GetTypicalFlight(flightName);
-					getFlightTask.addAutomaticTask(Integer.toString(compareTask.hashCode()), compareTask);
-					getFlightTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					getFlightTask.addAutomaticTask(Integer.toString(compareTask.hashCode()), new EmbeddedTask<>(compareTask, runMode));
 
 					// connect to parent task
 					AutomaticTaskOwner<StressSequence> parentTask = (AutomaticTaskOwner<StressSequence>) tasks.get(stressSequenceId).getTask();
-					parentTask.addAutomaticTask(Integer.toString(getFlightTask.hashCode()), getFlightTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(Integer.toString(getFlightTask.hashCode()), new EmbeddedTask<>(getFlightTask, runMode));
 				}
 
 				// put task to tasks
@@ -2462,8 +2431,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveChart saveTask = new SaveChart(null, outputPath);
 				CompareExternalFlights compareTask = new CompareExternalFlights(input);
-				compareTask.addAutomaticTask(id, saveTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 				// set input threshold
 				List<Element> typicalFlights = plotTypicalFlightComparison.getChildren("typicalFlight");
@@ -2478,13 +2446,11 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// create get flight task
 					GetExternalTypicalFlight getFlightTask = new GetExternalTypicalFlight(flightName);
-					getFlightTask.addAutomaticTask(Integer.toString(compareTask.hashCode()), compareTask);
-					getFlightTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					getFlightTask.addAutomaticTask(Integer.toString(compareTask.hashCode()), new EmbeddedTask<>(compareTask, runMode));
 
 					// connect to parent task
 					AutomaticTaskOwner<ExternalStressSequence> parentTask = (AutomaticTaskOwner<ExternalStressSequence>) tasks.get(headlessStressSequenceId).getTask();
-					parentTask.addAutomaticTask(Integer.toString(getFlightTask.hashCode()), getFlightTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(Integer.toString(getFlightTask.hashCode()), new EmbeddedTask<>(getFlightTask, runMode));
 				}
 
 				// put task to tasks
@@ -2557,8 +2523,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveXYSeriesCollection saveDatasetTask = new SaveXYSeriesCollection(null, outputPath);
 				PlotLevelCrossing compareTask = new PlotLevelCrossing(input);
-				compareTask.addAutomaticTask(id, saveDatasetTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> equivalentStressIds = plotLevelCrossingComparison.getChildren("equivalentStressId");
@@ -2572,8 +2537,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2616,8 +2580,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveXYSeriesCollection saveDatasetTask = new SaveXYSeriesCollection(null, outputPath);
 				PlotExternalLevelCrossing plotTask = new PlotExternalLevelCrossing(input);
-				plotTask.addAutomaticTask(id, saveDatasetTask);
-				plotTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				plotTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> headlessEquivalentStressIds = plotLevelCrossingComparison.getChildren("headlessEquivalentStressId");
@@ -2631,8 +2594,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(headlessEquivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, plotTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(plotTask, runMode));
 				}
 
 				// put task to tasks
@@ -2680,8 +2642,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// create tasks
 			SaveCategoryDataset saveDatasetTask = new SaveCategoryDataset(null, outputPath);
 			PlotDamageAngles plotTask = new PlotDamageAngles(null, orderBy, showLabels);
-			plotTask.addAutomaticTask(id, saveDatasetTask);
-			plotTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			plotTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 			// set input threshold
 			List<Element> damageAngleIds = plotDamageAngles.getChildren("damageAngleId");
@@ -2695,8 +2656,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<DamageAngle> parentTask = (AutomaticTaskOwner<DamageAngle>) tasks.get(damageAngleId).getTask();
-				parentTask.addAutomaticTask(id, plotTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(plotTask, runMode));
 			}
 
 			// put task to tasks
@@ -2774,8 +2734,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveCategoryDataset saveDatasetTask = new SaveCategoryDataset(null, outputPath);
 				CompareStressSequences compareTask = new CompareStressSequences(comparisonInput);
-				compareTask.addAutomaticTask(id, saveDatasetTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> stressSequenceIds = plotStressSequenceComparison.getChildren("stressSequenceId");
@@ -2789,8 +2748,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<StressSequence> parentTask = (AutomaticTaskOwner<StressSequence>) tasks.get(stressSequenceId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2839,8 +2797,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveCategoryDataset saveDatasetTask = new SaveCategoryDataset(null, outputPath);
 				CompareExternalStressSequences compareTask = new CompareExternalStressSequences(comparisonInput);
-				compareTask.addAutomaticTask(id, saveDatasetTask);
-				compareTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				compareTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> headlessStressSequenceIds = plotStressSequenceComparison.getChildren("headlessStressSequenceId");
@@ -2854,8 +2811,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<ExternalStressSequence> parentTask = (AutomaticTaskOwner<ExternalStressSequence>) tasks.get(headlessStressSequenceId).getTask();
-					parentTask.addAutomaticTask(id, compareTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(compareTask, runMode));
 				}
 
 				// put task to tasks
@@ -2893,8 +2849,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<Path> parentTask = (AutomaticTaskOwner<Path>) tasks.get(fileId).getTask();
-			parentTask.addAutomaticTask(id, shareTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(shareTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(shareTask, true));
@@ -2940,8 +2895,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// connect to parent task
 			AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-			parentTask.addAutomaticTask(id, task);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(task, true));
@@ -2984,8 +2938,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// connect to parent task
 			AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-			parentTask.addAutomaticTask(id, task);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(task, true));
@@ -3025,8 +2978,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3043,8 +2995,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(fastEquivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3094,13 +3045,11 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveCategoryDataset saveTask = new SaveCategoryDataset(null, outputPath);
 				PlotHistogram plotTask = new PlotHistogram(input, null);
-				plotTask.addAutomaticTask(id, saveTask);
-				plotTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				plotTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(headlessEquivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, plotTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(plotTask, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(saveTask, true));
@@ -3140,8 +3089,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// connect to parent task
 				String equivalentStressId = plotLevelCrossing.getChild("equivalentStressId").getTextNormalize();
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(equivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3158,8 +3106,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(fastEquivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3200,8 +3147,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create tasks
 				SaveXYSeriesCollection saveDatasetTask = new SaveXYSeriesCollection(null, outputPath);
 				PlotExternalLevelCrossing plotTask = new PlotExternalLevelCrossing(input);
-				plotTask.addAutomaticTask(id, saveDatasetTask);
-				plotTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				plotTask.addAutomaticTask(id, new EmbeddedTask<>(saveDatasetTask, runMode));
 
 				// set input threshold
 				List<Element> headlessEquivalentStressIds = plotLevelCrossing.getChildren("headlessEquivalentStressId");
@@ -3215,8 +3161,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// connect to parent task
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(headlessEquivalentStressId).getTask();
-					parentTask.addAutomaticTask(id, plotTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(plotTask, runMode));
 				}
 
 				// put task to tasks
@@ -3254,8 +3199,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// connect to parent task
 			String typicalFlightDamageContributionId = plotTypicalFlightDamageContribution.getChildTextNormalize("typicalFlightDamageContributionId");
 			AutomaticTaskOwner<FlightDamageContributions> parentTask = (AutomaticTaskOwner<FlightDamageContributions>) tasks.get(typicalFlightDamageContributionId).getTask();
-			parentTask.addAutomaticTask(id, task);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(task, true));
@@ -3290,8 +3234,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// connect to parent task
 			String loadcaseDamageContributionId = plotLoadcaseDamageContribution.getChildTextNormalize("loadcaseDamageContributionId");
 			AutomaticTaskOwner<LoadcaseDamageContributions> parentTask = (AutomaticTaskOwner<LoadcaseDamageContributions>) tasks.get(loadcaseDamageContributionId).getTask();
-			parentTask.addAutomaticTask(id, task);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(task, true));
@@ -3374,12 +3317,10 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create task
 				FastGenerateStressSequence task = new FastGenerateStressSequence(null, input, Arrays.asList(equivalentStressAnalysisInput.getMaterial()), false, engine);
 				task.setIsamiEngineInputs(isamiVersion, isamiSubVersion, applyCompression);
-				task.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
 
 				// add to parent task
 				AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put generate stress sequence task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3463,12 +3404,10 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				// create task
 				FastGenerateStressSequence task = new FastGenerateStressSequence(null, input, Arrays.asList(equivalentStressAnalysisInput.getMaterial()), true, engine);
 				task.setIsamiEngineInputs(isamiVersion, isamiSubVersion, applyCompression);
-				task.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
 
 				// add to parent task
 				AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put generate stress sequence task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3553,8 +3492,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put generate stress sequence task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3653,8 +3591,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put equivalent stress analysis task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3713,16 +3650,14 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				if (equivalentStressAnalysis.getChild("stressSequenceId") != null) {
 					String stressSequenceId = equivalentStressAnalysis.getChildTextNormalize("stressSequenceId");
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(stressSequenceId).getTask();
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
-					parentTask.addAutomaticTask(Integer.toString(equivalentStressAnalysisTask.hashCode()), equivalentStressAnalysisTask);
+					parentTask.addAutomaticTask(Integer.toString(equivalentStressAnalysisTask.hashCode()), new EmbeddedTask<>(equivalentStressAnalysisTask, runMode));
 				}
 
 				// headless stress sequence
 				else if (equivalentStressAnalysis.getChild("headlessStressSequenceId") != null) {
 					String headlessStressSequenceId = equivalentStressAnalysis.getChildTextNormalize("headlessStressSequenceId");
 					AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(headlessStressSequenceId).getTask();
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
-					parentTask.addAutomaticTask(Integer.toString(equivalentStressAnalysisTask.hashCode()), equivalentStressAnalysisTask);
+					parentTask.addAutomaticTask(Integer.toString(equivalentStressAnalysisTask.hashCode()), new EmbeddedTask<>(equivalentStressAnalysisTask, runMode));
 				}
 
 				// STF file
@@ -3741,13 +3676,11 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// create task
 					GenerateStressSequence generateStressSequenceTask = new GenerateStressSequence(null, generateStressSequenceInput);
-					generateStressSequenceTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
-					generateStressSequenceTask.addAutomaticTask(Integer.toString(equivalentStressAnalysisTask.hashCode()), equivalentStressAnalysisTask);
+					generateStressSequenceTask.addAutomaticTask(Integer.toString(equivalentStressAnalysisTask.hashCode()), new EmbeddedTask<>(equivalentStressAnalysisTask, runMode));
 
 					// add to parent task
 					AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-					parentTask.addAutomaticTask(id, generateStressSequenceTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(generateStressSequenceTask, runMode));
 
 					// put generate stress sequence task to tasks
 					tasks.put("ownerOf_" + id, new InstructedTask(generateStressSequenceTask, true));
@@ -3804,8 +3737,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<StressSequence> parentTask = (AutomaticTaskOwner<StressSequence>) tasks.get(stressSequenceId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -3837,8 +3769,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(fastEquivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask((InternalEquinoxTask<?>) task, true));
@@ -3868,17 +3799,14 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 					// create tasks
 					SaveXYDataset saveTask = new SaveXYDataset(null, outputPath);
 					PlotExternalTypicalFlights plotTask = new PlotExternalTypicalFlights(new ExternalFlightPlotInput());
-					plotTask.addAutomaticTask(id, saveTask);
-					plotTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					plotTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 					plotTask.setInputThreshold(1);
 					SelectExternalFlight selectTask = new SelectExternalFlight(null, criteria);
-					selectTask.addAutomaticTask(id, plotTask);
-					selectTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					selectTask.addAutomaticTask(id, new EmbeddedTask<>(plotTask, runMode));
 
 					// connect to parent task
 					AutomaticTaskOwner<ExternalStressSequence> parentTask = (AutomaticTaskOwner<ExternalStressSequence>) tasks.get(headlessStressSequenceId).getTask();
-					parentTask.addAutomaticTask(id, selectTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(selectTask, runMode));
 
 					// put task to tasks
 					tasks.put(id, new InstructedTask(saveTask, true));
@@ -3923,16 +3851,13 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 					// create tasks
 					SaveCategoryDataset saveTask = new SaveCategoryDataset(null, outputPath);
 					GenerateExternalStatistics plotTask = new GenerateExternalStatistics(input);
-					plotTask.addAutomaticTask(id, saveTask);
-					plotTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					plotTask.addAutomaticTask(id, new EmbeddedTask<>(saveTask, runMode));
 					SelectAllExternalFlights selectTask = new SelectAllExternalFlights(null);
-					selectTask.addAutomaticTask(id, plotTask);
-					selectTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					selectTask.addAutomaticTask(id, new EmbeddedTask<>(plotTask, runMode));
 
 					// connect to parent task
 					AutomaticTaskOwner<ExternalStressSequence> parentTask = (AutomaticTaskOwner<ExternalStressSequence>) tasks.get(headlessStressSequenceId).getTask();
-					parentTask.addAutomaticTask(id, selectTask);
-					parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addAutomaticTask(id, new EmbeddedTask<>(selectTask, runMode));
 
 					// put task to tasks
 					tasks.put(id, new InstructedTask(saveTask, true));
@@ -3969,8 +3894,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// connect to parent task
 			AutomaticTaskOwner<StressSequence> parentTask = (AutomaticTaskOwner<StressSequence>) tasks.get(stressSequenceId).getTask();
-			parentTask.addAutomaticTask(id, task);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(task, true));
@@ -4010,8 +3934,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<StressSequence> parentTask = (AutomaticTaskOwner<StressSequence>) tasks.get(stressSequenceId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -4028,8 +3951,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// connect to parent task
 				AutomaticTaskOwner<SpectrumItem> parentTask = (AutomaticTaskOwner<SpectrumItem>) tasks.get(fastEquivalentStressId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(task, true));
@@ -4081,8 +4003,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				AutomaticTaskOwner<StressSequence> parentTask = (AutomaticTaskOwner<StressSequence>) tasks.get(stressSequenceId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask((InternalEquinoxTask<?>) task, true));
@@ -4110,8 +4031,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				AutomaticTaskOwner<ExternalStressSequence> parentTask = (AutomaticTaskOwner<ExternalStressSequence>) tasks.get(headlessStressSequenceId).getTask();
-				parentTask.addAutomaticTask(id, task);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(task, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask((InternalEquinoxTask<?>) task, true));
@@ -4157,8 +4077,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-			parentTask.addAutomaticTask(id, generateStressSequenceTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(generateStressSequenceTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(generateStressSequenceTask, true));
@@ -4208,8 +4127,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// add to parent task
 					InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
-					parentTask.addFollowerTask(task);
-					parentTask.setFollowerTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addFollowerTask(task, runMode);
 
 					// put task to tasks
 					tasks.put(id, new InstructedTask(task, true));
@@ -4239,8 +4157,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// add to parent task
 					InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
-					parentTask.addFollowerTask(task);
-					parentTask.setFollowerTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addFollowerTask(task, runMode);
 
 					// put task to tasks
 					tasks.put(id, new InstructedTask(task, true));
@@ -4274,8 +4191,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<Path> parentTask = (AutomaticTaskOwner<Path>) tasks.get(exportId).getTask();
-			parentTask.addAutomaticTask(id, uploadStfTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(uploadStfTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(uploadStfTask, true));
@@ -4425,13 +4341,23 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			}
 
 			// add to first task
-			getSTFInfoTask.addAutomaticTask(id, exportSTFTask);
-			getSTFInfoTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			getSTFInfoTask.addAutomaticTask(id, new EmbeddedTask<>(exportSTFTask, runMode));
+
+			// previous instruction id given
+			boolean previousInstructionIdGiven = exportStf.getChild("previousInstructionId") != null;
+			if (previousInstructionIdGiven) {
+
+				// get previous instruction id
+				String previousInstructionId = exportStf.getChildTextNormalize("previousInstructionId");
+
+				// add to parent task
+				InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
+				parentTask.addFollowerTask(getSTFInfoTask, runMode);
+			}
 
 			// add to parent task
 			AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-			parentTask.addAutomaticTask(id, getSTFInfoTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(getSTFInfoTask, previousInstructionIdGiven ? ExecutionMode.NO_RUN : runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(exportSTFTask, true));
@@ -4464,8 +4390,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-			parentTask.addAutomaticTask(id, shareSTFTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(shareSTFTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(shareSTFTask, true));
@@ -4498,8 +4423,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-			parentTask.addAutomaticTask(id, saveSTFTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(saveSTFTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(saveSTFTask, true));
@@ -4545,8 +4469,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-			parentTask.addAutomaticTask(id, assignMissionParametersTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(assignMissionParametersTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(assignMissionParametersTask, true));
@@ -4579,8 +4502,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<STFFile> parentTask = (AutomaticTaskOwner<STFFile>) tasks.get(stfId).getTask();
-			parentTask.addAutomaticTask(id, setStfMissionTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(setStfMissionTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(setStfMissionTask, true));
@@ -4618,8 +4540,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-				parentTask.addAutomaticTask(id, addSTFFilesTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(addSTFFilesTask, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(addSTFFilesTask, true));
@@ -4659,13 +4580,11 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 				DownloadPilotPoint downloadPilotPointTask = new DownloadPilotPoint(null, null, null);
 
 				// add download task to search
-				searchPilotPointTask.addAutomaticTask(id, downloadPilotPointTask);
-				searchPilotPointTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				searchPilotPointTask.addAutomaticTask(id, new EmbeddedTask<>(downloadPilotPointTask, runMode));
 
 				// add search to add spectrum
 				AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-				parentTask.addAutomaticTask(id, searchPilotPointTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(searchPilotPointTask, runMode));
 
 				// add to tasks
 				tasks.put(id, new InstructedTask(downloadPilotPointTask, true));
@@ -4737,8 +4656,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-				parentTask.addAutomaticTask(id, createDummySTFTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(createDummySTFTask, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(createDummySTFTask, true));
@@ -4797,8 +4715,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// create tasks
 			AdvancedPilotPointSearch searchPilotPointTask = new AdvancedPilotPointSearch(input);
 			DownloadPilotPoint downloadPilotPointTask = new DownloadPilotPoint(null, outputFile, null);
-			searchPilotPointTask.addAutomaticTask(id, downloadPilotPointTask);
-			searchPilotPointTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			searchPilotPointTask.addAutomaticTask(id, new EmbeddedTask<>(downloadPilotPointTask, runMode));
 
 			// no previous instruction given
 			if (downloadStf.getChild("previousInstructionId") == null) {
@@ -4816,8 +4733,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
-				parentTask.addFollowerTask(searchPilotPointTask);
-				parentTask.setFollowerTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addFollowerTask(searchPilotPointTask, runMode);
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(downloadPilotPointTask, true));
@@ -4851,8 +4767,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<Path> parentTask = (AutomaticTaskOwner<Path>) tasks.get(exportId).getTask();
-			parentTask.addAutomaticTask(id, uploadSectrumTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(uploadSectrumTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(uploadSectrumTask, true));
@@ -4893,13 +4808,23 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			}
 
 			// add to first task
-			getSpectrumInfoTask.addAutomaticTask(id, exportSpectrumTask);
-			getSpectrumInfoTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			getSpectrumInfoTask.addAutomaticTask(id, new EmbeddedTask<>(exportSpectrumTask, runMode));
+
+			// previous instruction id given
+			boolean previousInstructionIdGiven = exportSpectrum.getChild("previousInstructionId") != null;
+			if (previousInstructionIdGiven) {
+
+				// get previous instruction id
+				String previousInstructionId = exportSpectrum.getChildTextNormalize("previousInstructionId");
+
+				// add to parent task
+				InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
+				parentTask.addFollowerTask(getSpectrumInfoTask, runMode);
+			}
 
 			// add to parent task
 			AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-			parentTask.addAutomaticTask(id, getSpectrumInfoTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(getSpectrumInfoTask, previousInstructionIdGiven ? ExecutionMode.NO_RUN : runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(exportSpectrumTask, true));
@@ -4931,10 +4856,21 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			String recipient = shareSpectrumFile.getChild("recipient").getTextNormalize();
 			ShareSpectrumFile shareSpectrumFileTask = new ShareSpectrumFile(null, fileType, Arrays.asList(taskPanel_.getOwner().getOwner().getUser(recipient)));
 
+			// previous instruction id given
+			boolean previousInstructionIdGiven = shareSpectrumFile.getChild("previousInstructionId") != null;
+			if (previousInstructionIdGiven) {
+
+				// get previous instruction id
+				String previousInstructionId = shareSpectrumFile.getChildTextNormalize("previousInstructionId");
+
+				// add to parent task
+				InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
+				parentTask.addFollowerTask(shareSpectrumFileTask, runMode);
+			}
+
 			// add to parent task
 			AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-			parentTask.addAutomaticTask(id, shareSpectrumFileTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(shareSpectrumFileTask, previousInstructionIdGiven ? ExecutionMode.NO_RUN : runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(shareSpectrumFileTask, true));
@@ -4965,10 +4901,21 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			String recipient = shareSpectrum.getChild("recipient").getTextNormalize();
 			ShareSpectrum shareSpectrumTask = new ShareSpectrum(null, Arrays.asList(taskPanel_.getOwner().getOwner().getUser(recipient)));
 
+			// previous instruction id given
+			boolean previousInstructionIdGiven = shareSpectrum.getChild("previousInstructionId") != null;
+			if (previousInstructionIdGiven) {
+
+				// get previous instruction id
+				String previousInstructionId = shareSpectrum.getChildTextNormalize("previousInstructionId");
+
+				// add to parent task
+				InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
+				parentTask.addFollowerTask(shareSpectrumTask, runMode);
+			}
+
 			// add to parent task
 			AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-			parentTask.addAutomaticTask(id, shareSpectrumTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(shareSpectrumTask, previousInstructionIdGiven ? ExecutionMode.NO_RUN : runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(shareSpectrumTask, true));
@@ -5029,8 +4976,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-			parentTask.addAutomaticTask(id, saveSpectrumFileTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(saveSpectrumFileTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask((InternalEquinoxTask<?>) saveSpectrumFileTask, true));
@@ -5063,8 +5009,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-			parentTask.addAutomaticTask(id, saveSpectrumTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(saveSpectrumTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(saveSpectrumTask, true));
@@ -5110,8 +5055,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 			// add to parent task
 			AutomaticTaskOwner<Spectrum> parentTask = (AutomaticTaskOwner<Spectrum>) tasks.get(spectrumId).getTask();
-			parentTask.addAutomaticTask(id, assignMissionParametersTask);
-			parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			parentTask.addAutomaticTask(id, new EmbeddedTask<>(assignMissionParametersTask, runMode));
 
 			// put task to tasks
 			tasks.put(id, new InstructedTask(assignMissionParametersTask, true));
@@ -5161,8 +5105,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// add to parent task
 					InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
-					parentTask.addFollowerTask(task);
-					parentTask.setFollowerTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addFollowerTask(task, runMode);
 
 					// put task to tasks
 					tasks.put(id, new InstructedTask(task, true));
@@ -5180,8 +5123,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				AutomaticTaskOwner<Pair<Path, SpectrumInfo>> parentTask = (AutomaticTaskOwner<Pair<Path, SpectrumInfo>>) tasks.get(downloadId).getTask();
-				parentTask.addAutomaticTask(id, addSpectrumTask);
-				parentTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addAutomaticTask(id, new EmbeddedTask<>(addSpectrumTask, runMode));
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(addSpectrumTask, true));
@@ -5217,8 +5159,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 					// add to parent task
 					InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
-					parentTask.addFollowerTask(task);
-					parentTask.setFollowerTaskExecutionMode(runMode.equals(PARALLEL));
+					parentTask.addFollowerTask(task, runMode);
 
 					// put task to tasks
 					tasks.put(id, new InstructedTask(task, true));
@@ -5278,8 +5219,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 			// create tasks
 			AdvancedSpectrumSearch searchSpectrumTask = new AdvancedSpectrumSearch(input);
 			DownloadSpectrum downloadSpectrumTask = new DownloadSpectrum(null, outputFile, false);
-			searchSpectrumTask.addAutomaticTask(id, downloadSpectrumTask);
-			searchSpectrumTask.setAutomaticTaskExecutionMode(runMode.equals(PARALLEL));
+			searchSpectrumTask.addAutomaticTask(id, new EmbeddedTask<>(downloadSpectrumTask, runMode));
 
 			// no previous instruction given
 			if (downloadSpectrum.getChild("previousInstructionId") == null) {
@@ -5297,8 +5237,7 @@ public class RunInstructionSet extends TemporaryFileCreatingTask<HashMap<String,
 
 				// add to parent task
 				InternalEquinoxTask<?> parentTask = tasks.get(previousInstructionId).getTask();
-				parentTask.addFollowerTask(searchSpectrumTask);
-				parentTask.setFollowerTaskExecutionMode(runMode.equals(PARALLEL));
+				parentTask.addFollowerTask(searchSpectrumTask, runMode);
 
 				// put task to tasks
 				tasks.put(id, new InstructedTask(downloadSpectrumTask, true));
