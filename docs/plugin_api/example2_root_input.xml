@@ -53,6 +53,8 @@
 		<id>30</id>
 		<!--The stfId refers to 'addStf' instruction.-->
 		<stfId>3</stfId>
+		<!--The previousInstructionId refers to the instruction which will be executed prior to this instruction. This element is optional, if not given, this instruction will be executed after its input supplying instruction completes.-->
+		<previousInstructionId>29</previousInstructionId>
 		<!--Pilot point attribute. Multiple pilotPointInfo elements can be given for various pilot point attributes. This element is optional.-->
 		<pilotPointInfo>
 			<!--Pilot point attribute name. This can be one of 'fatigueMission', 'description', 'dataSource', 'generationSource', 'deliveryReference', 'issue', 'eid', 'elementType', 'framePosition', 'stringerPosition', 'fatigueMaterial', 'preffasMaterial' or 'linearMaterial'.-->
